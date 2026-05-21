@@ -1,0 +1,11 @@
+services:
+  qlogix:
+    image: ghcr.io/qmaru/qlogix:latest
+    container_name: qlogix
+    restart: unless-stopped
+    environment:
+      QLOGIX_CONFIG: /app/config.toml
+      TZ: Asia/Shanghai
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+    command: ["qlogix-cli", "-h"]
