@@ -7,10 +7,10 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-# 项目根目录
+# root dir
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
-# 环境变量优先
+# env var: QLOGIX_CONFIG, default to ROOT_DIR / "config.toml"
 CONFIG_PATH = Path(os.getenv("QLOGIX_CONFIG", ROOT_DIR / "config.toml"))
 
 
