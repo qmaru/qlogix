@@ -4,22 +4,46 @@ from qlogix.analyze.ai import AIAnalyze
 from qlogix.analyze.stats import StatsAnalyze
 from qlogix.filter.base import Filter
 from qlogix.pipeline.pipeline import Pipeline
+from qlogix.source.command import CommandSource
 from qlogix.source.file import FileSource
+from qlogix.source.http import HTTPSource
+from qlogix.source.ssh import SSHSource
+from qlogix.source.stdin import StdinSource
 
 
 def add_source_args(parser):
-    parser.add_argument("--file", help="Path to log file")
-    parser.add_argument("--url", help="URL to fetch logs from")
+    parser.add_argument(
+        "source_type",
+        choices=["file", "ssh", "http", "command", "stdin"],
+    )
+
+    parser.add_argument(
+        "--shell", choices=["default", "powershell", "cmd", "bash"], default="default"
+    )
+
+    parser.add_argument("--key", help="SSH private key path")
+    parser.add_argument("--password", help="SSH password")
+
+    parser.add_argument("target", nargs="?")
 
 
 def load_events(args):
-    if args.file:
-        return FileSource(args.file).fetch()
+    if args.source_type == "file":
+        return FileSource(args.target).fetch()
 
-    if args.url:
-        return FileSource(args.url).fetch()
+    if args.source_type == "http":
+        return HTTPSource(args.target).fetch()
 
-    raise ValueError("missing source (--file/--url)")
+    if args.source_type == "ssh":
+        return SSHSource(args.target).fetch()
+
+    if args.source_type == "command":
+        return CommandSource(args.target, args.shell).fetch()
+
+    if args.source_type == "stdin":
+        return StdinSource().fetch()
+
+    raise ValueError("Invalid source type")
 
 
 def get_parser():

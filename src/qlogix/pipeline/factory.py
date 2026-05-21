@@ -1,8 +1,9 @@
-from qlogix.source.file import FileSource
-from qlogix.source.api import APISource
 from qlogix.analyze.ai import AIAnalyze
+from qlogix.config import Filter as FilterType
+from qlogix.config import Source as SourceType
 from qlogix.filter.base import Filter
-from qlogix.config import Source as SourceType, Filter as FilterType
+from qlogix.source.file import FileSource
+from qlogix.source.http import HTTPSource
 
 
 def create_sources(configs: list[SourceType]):
@@ -17,7 +18,7 @@ def create_sources(configs: list[SourceType]):
         elif cfg.type == "api":
             if not cfg.url:
                 raise ValueError("API source requires 'url'")
-            sources.append(APISource(cfg.url))
+            sources.append(HTTPSource(cfg.url))
 
     return sources
 
