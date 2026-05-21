@@ -1,0 +1,17 @@
+[[source]]
+type = "file"
+path = ""
+
+[[source]]
+type = "api"
+url = "https://example.com/logs"
+
+[filter]
+plugins = ["passthrough"]
+
+[analyze]
+provider = "openai"
+model = "gpt5"
+base_url = "https://api.openai.com/v1"
+api_key = ""
+system_prompt = "Analyze logs and provide concise insights."

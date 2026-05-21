@@ -1,0 +1,25 @@
+[project]
+name = "qlogix"
+version = "0.1.0"
+description = "qlogix is an AI-powered platform for collecting, analyzing, and visualizing logs from multiple sources."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic>=2.13.4",
+    "pydantic-ai-slim[google,openai]>=1.99.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/qlogix"]
+
+[project.scripts]
+qlogix = "qlogix.main:run"
+qlogix-cli = "qlogix.cli:run"
