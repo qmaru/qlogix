@@ -1,3 +1,5 @@
+import json
+
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -27,7 +29,7 @@ class AIAnalyze(Analyze):
         self.agent = Agent(model, system_prompt=cfg.system_prompt)
 
     def run(self, events: list[dict]) -> str:
-        logs = "\n".join(event["message"] for event in events)
+        logs = json.dumps(events, ensure_ascii=False)
         result = self.agent.run_sync(
             f"""
 Analyze the following logs:

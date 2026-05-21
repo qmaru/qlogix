@@ -1,17 +1,63 @@
 [[source]]
 type = "file"
+source_name = "nginx"
 path = ""
 
 [[source]]
-type = "api"
-url = "https://example.com/logs"
+type = "http"
+source_name = "httpbun"
+url = "https://httpbun.com/get"
+
+[[source]]
+type = "ssh"
+source_name = "remote_server"
+url = "ssh://root@server:port/path/to/log.txt"
+password = "123456789"
+
+[[source]]
+type = "command"
+source_name = "syslog"
+command = "tail -f /var/log/syslog"
 
 [filter]
 plugins = ["passthrough"]
 
 [analyze]
 provider = "openai"
-model = "gpt5"
+model = "gpt-5"
 base_url = "https://api.openai.com/v1"
 api_key = ""
-system_prompt = "Analyze logs and provide concise insights."
+system_prompt = """
+You are a log analysis assistant.
+
+Analyze aggregated logs and provide concise, evidence-based insights.
+
+Rules:
+- Only infer from the provided logs. Do not invent missing context.
+- The input contains multiple source groups.
+- `source_name` is the authoritative grouping key.
+- Always group findings by `source_name`.
+- Do not group by service names found inside log messages.
+- Service names inside log messages are only evidence/context within that source group.
+- If a log line does not have `source_name`, group it under `unknown`.
+- Focus on anomalies, errors, warnings, repeated patterns, performance issues, and possible root causes.
+- Ignore noise and duplicate information.
+- Mention confidence when the cause is uncertain.
+- If sensitive information appears, do not repeat it.
+
+Output format:
+
+## Summary
+Brief overall assessment.
+
+## Source Breakdown
+
+### <source_name>
+- Main issues
+- Important patterns
+- Possible root causes
+- Related internal services mentioned in logs, if any
+
+## Recommendations
+- Actionable next steps ordered by priority.
+"""

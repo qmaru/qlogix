@@ -8,9 +8,11 @@ class CommandSource(Source):
         self,
         command: str,
         shell_type: str = "default",
+        source_name: str | None = None,
     ):
         self.command = command
         self.shell_type = shell_type
+        self.source_name = source_name
 
     def fetch(self) -> list[dict]:
         shell_map = {
@@ -32,7 +34,7 @@ class CommandSource(Source):
             raise RuntimeError(result.stderr.strip())
 
         return [
-            {"source": "command", "message": line.strip()}
+            {"source": "command", "source_name": self.source_name, "message": line.strip()}
             for line in result.stdout.splitlines()
             if line.strip()
         ]

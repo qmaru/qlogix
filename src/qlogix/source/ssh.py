@@ -16,33 +16,32 @@ class SSHConfig(BaseModel):
 
 
 class SSHSource(Source):
-    def __init__(self, target: str):
-        config = parse_ssh_target(target)
+    def __init__(self, target: str, password: str | None = None, key: str | None = None, source_name: str | None = None):
+        config = parse_ssh_target(target, password, key)
 
-        self.host = config[1].host
-        self.port = config[1].port
-        self.username = config[1].username
-        self.password = config[1].password
-        self.private_key = config[1].private_key
         self.log_path = config[0]
+        self.ssh_config = config[1]
+        self.source_name = source_name
 
     def __ssh_connect(self):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        if self.private_key:
-            key = paramiko.RSAKey.from_private_key_file(self.private_key)
-            client.connect(self.host, username=self.username, pkey=key)
+        if self.ssh_config.private_key:
+            key = paramiko.RSAKey.from_private_key_file(self.ssh_config.private_key)
+            client.connect(self.ssh_config.host, username=self.ssh_config.username, pkey=key)
         else:
-            client.connect(self.host, username=self.username, password=self.password)
+            client.connect(
+                self.ssh_config.host,
+                username=self.ssh_config.username,
+                password=self.ssh_config.password,
+            )
         return client
 
     def fetch(self) -> list[dict]:
-        # ssh user@server:/var/log/app.log
-        client = self.__ssh_connect()
-        stdin, stdout, stderr = client.exec_command(f"cat {self.log_path}")
-        lines = stdout.readlines()
-        client.close()
-        return [{"source": "ssh", "message": line.strip()} for line in lines]
+        with self.__ssh_connect() as client:
+            stdin, stdout, stderr = client.exec_command(f"cat {self.log_path}")
+            lines = stdout.readlines()
+        return [{"source": "ssh", "source_name": self.source_name, "message": line.strip()} for line in lines]
 
 
 def parse_ssh_target(
@@ -66,9 +65,6 @@ def parse_ssh_target(
 
     if not key and not password:
         password = getpass.getpass(f"{uri.username}@{uri.hostname} password: ")
-
-    if not password and not key:
-        raise ValueError("must provide either password or private key for ssh authentication")
 
     config = SSHConfig(
         host=uri.hostname,

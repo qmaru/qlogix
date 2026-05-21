@@ -1,10 +1,11 @@
 import os
 import tomllib
+from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 # 项目根目录
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -13,10 +14,67 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 CONFIG_PATH = Path(os.getenv("QLOGIX_CONFIG", ROOT_DIR / "config.toml"))
 
 
-class Source(BaseModel):
-    type: Literal["file", "api"]
-    path: str | None = None
-    url: str | None = None
+class SourceType(StrEnum):
+    FILE = "file"
+    HTTP = "http"
+    COMMAND = "command"
+    SSH = "ssh"
+    STDIN = "stdin"
+
+
+class ShellType(StrEnum):
+    CMD = "cmd"
+    BASH = "bash"
+    POWERSHELL = "powershell"
+
+
+class AnalyzeProvider(StrEnum):
+    OPENAI = "openai"
+    GOOGLE = "google"
+
+
+class BaseSource(BaseModel):
+    source_name: str | None = None
+
+
+class FileSourceConfig(BaseSource):
+    type: Literal["file"] = "file"
+    path: str
+
+
+class HTTPSourceConfig(BaseSource):
+    type: Literal["http"] = "http"
+    url: str
+
+
+class CommandSourceConfig(BaseSource):
+    type: Literal["command"] = "command"
+    command: str
+    shell_type: ShellType = ShellType.BASH
+
+
+class SSHSourceConfig(BaseSource):
+    type: Literal["ssh"] = "ssh"
+    url: str
+    password: str | None = None
+    private_key: str | None = None
+
+    @model_validator(mode="after")
+    def validate_auth(self):
+        if not self.password and not self.private_key:
+            raise ValueError("must provide password or private_key")
+
+        return self
+
+
+class StdinSourceConfig(BaseSource):
+    type: Literal["stdin"] = "stdin"
+
+
+Source = Annotated[
+    FileSourceConfig | HTTPSourceConfig | CommandSourceConfig | SSHSourceConfig | StdinSourceConfig,
+    Field(discriminator="type"),
+]
 
 
 class Filter(BaseModel):
@@ -24,7 +82,7 @@ class Filter(BaseModel):
 
 
 class Analyze(BaseModel):
-    provider: Literal["openai", "google"]
+    provider: AnalyzeProvider
     model: str
     api_key: str | None = None
     base_url: str | None = None
