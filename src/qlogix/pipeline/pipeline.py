@@ -42,6 +42,10 @@ class Pipeline:
                 with log_stage(logger, "filter", filter=filter_.__class__.__name__):
                     events = filter_.process(events)
 
+        if len(events) == 0:
+            logger.info("no events to analyze or sink after filtering")
+            return
+
         analyzer_name = (
             self.analyze_ai.__class__.__name__
             if is_analyze
