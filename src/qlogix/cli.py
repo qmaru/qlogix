@@ -55,17 +55,17 @@ def get_parser():
 
     sub.add_parser("run", help="Run the default pipeline")
 
-    source_parser = sub.add_parser("source")
+    source_parser = sub.add_parser("source", help="Fetch events from a source")
     add_source_args(source_parser)
 
     # Filter manager
-    filter_parser = sub.add_parser("filter")
+    filter_parser = sub.add_parser("filter", help="Apply a filter plugin to events")
     filter_parser.add_argument("--list", action="store_true", help="List available filters")
     filter_parser.add_argument("plugin_name", nargs="?", help="Filter plugin name")
     add_source_args(filter_parser)
 
     # Analyze subparser with options for AI and stats
-    analyze_parser = sub.add_parser("analyze")
+    analyze_parser = sub.add_parser("analyze", help="Analyze events using AI or stats")
     analyze_parser.add_argument("analyzer", choices=["ai", "stats"], help="Analyzer type")
     add_source_args(analyze_parser)
 
