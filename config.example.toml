@@ -29,6 +29,11 @@ path = "/path/to/output.log"
 [[sink]]
 type = "stdout"
 
+[[sink]]
+type = "telegram"
+token = ""
+chat_id = ""
+
 [analyze]
 provider = "openai"
 model = "gpt-5"

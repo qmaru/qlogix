@@ -7,6 +7,7 @@ from qlogix.filter.base import Filter
 from qlogix.sink.base import Sink
 from qlogix.sink.file import FileSink
 from qlogix.sink.stdout import StdoutSink
+from qlogix.sink.telegram import TelegramSink
 from qlogix.source.base import Source
 from qlogix.source.command import CommandSource
 from qlogix.source.file import FileSource
@@ -88,5 +89,7 @@ def create_sink(configs: list[SinkType]) -> list[Sink]:
             sinks.append(FileSink(config.path))
         elif config.type == "stdout":
             sinks.append(StdoutSink())
+        elif config.type == "telegram":
+            sinks.append(TelegramSink())
 
     return sinks

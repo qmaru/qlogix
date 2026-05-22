@@ -25,6 +25,7 @@ class SourceType(StrEnum):
 class SinkType(StrEnum):
     FILE = "file"
     STDOUT = "stdout"
+    TELEGRAM = "telegram"
 
 
 class ShellType(StrEnum):
@@ -111,8 +112,37 @@ class StdoutSinkConfig(BaseModel):
         return "stdout"
 
 
+class TelegramSinkConfig(BaseModel):
+    type: Literal["telegram"] = "telegram"
+    token: str | None = None  # QLOGIX_TELEGRAM_TOKEN
+    chat_id: str | None = None  # QLOGIX_TELEGRAM_CHAT_ID
+
+    @model_validator(mode="after")
+    def validate_credentials(self):
+        if not self.token and not os.getenv("QLOGIX_TELEGRAM_TOKEN"):
+            raise ValueError("telegram sink requires `token` or env `QLOGIX_TELEGRAM_TOKEN`")
+
+        if not self.chat_id and not os.getenv("QLOGIX_TELEGRAM_CHAT_ID"):
+            raise ValueError("telegram sink requires `chat_id` or env `QLOGIX_TELEGRAM_CHAT_ID`")
+
+        return self
+
+    @property
+    def resolved_token(self) -> str:
+        return self.token or os.environ["QLOGIX_TELEGRAM_TOKEN"]
+
+    @property
+    def resolved_chat_id(self) -> str:
+        return self.chat_id or os.environ["QLOGIX_TELEGRAM_CHAT_ID"]
+
+    @property
+    def unique_key(self) -> str:
+        chat_id = self.chat_id or os.getenv("QLOGIX_TELEGRAM_CHAT_ID")
+        return f"telegram:{chat_id}"
+
+
 Sink = Annotated[
-    FileSinkConfig | StdoutSinkConfig,
+    FileSinkConfig | StdoutSinkConfig | TelegramSinkConfig,
     Field(discriminator="type"),
 ]
 
@@ -129,10 +159,8 @@ class Config(BaseModel):
 
         for sink in self.sink:
             key = sink.unique_key
-
             if key in seen:
                 raise ValueError(f"Duplicate sink: {key}")
-
             seen.add(key)
 
         return self

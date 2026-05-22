@@ -34,10 +34,16 @@ class SSHSource(Source):
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         if self.ssh_config.private_key:
             key = paramiko.RSAKey.from_private_key_file(self.ssh_config.private_key)
-            client.connect(self.ssh_config.host, username=self.ssh_config.username, pkey=key)
+            client.connect(
+                self.ssh_config.host,
+                port=self.ssh_config.port,
+                username=self.ssh_config.username,
+                pkey=key,
+            )
         else:
             client.connect(
                 self.ssh_config.host,
+                port=self.ssh_config.port,
                 username=self.ssh_config.username,
                 password=self.ssh_config.password,
             )

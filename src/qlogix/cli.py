@@ -9,6 +9,7 @@ from qlogix.pipeline.pipeline import Pipeline
 from qlogix.sink.base import Sink
 from qlogix.sink.file import FileSink
 from qlogix.sink.stdout import StdoutSink
+from qlogix.sink.telegram import TelegramSink
 from qlogix.source.command import CommandSource
 from qlogix.source.file import FileSource
 from qlogix.source.http import HTTPSource
@@ -16,7 +17,7 @@ from qlogix.source.ssh import SSHSource
 from qlogix.source.stdin import StdinSource
 
 
-def add_source_args(parser):
+def add_source_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "source_type", nargs="?", choices=[e.value for e in SourceType], help="Source type"
     )
@@ -37,11 +38,11 @@ def add_source_args(parser):
     )
 
     # extra args for SSH
-    parser.add_argument("--key", help="SSH private key path for ssh source")
-    parser.add_argument("--password", help="SSH password for ssh source")
+    parser.add_argument("--ssh-key", help="SSH private key path for ssh source")
+    parser.add_argument("--ssh-password", help="SSH password for ssh source")
 
 
-def load_events(args):
+def load_events(args: argparse.Namespace):
     if not args.source_type:
         raise ValueError("source_type required")
 
@@ -52,7 +53,12 @@ def load_events(args):
         return HTTPSource(args.source_spec, source_name=args.source_name).fetch()
 
     if args.source_type == "ssh":
-        return SSHSource(args.source_spec, source_name=args.source_name).fetch()
+        return SSHSource(
+            args.source_spec,
+            password=args.ssh_password,
+            key=args.ssh_key,
+            source_name=args.source_name,
+        ).fetch()
 
     if args.source_type == "command":
         return CommandSource(args.source_spec, args.shell, source_name=args.source_name).fetch()
@@ -74,6 +80,10 @@ def write_events(content: AnalyzeBaseContent, args: argparse.Namespace):
     if args.sink_type == "file":
         path = args.sink_spec or "output.log"
         FileSink(path).write(content)
+        return
+
+    if args.sink_type == "telegram":
+        TelegramSink().write(content)
         return
 
     raise ValueError("Invalid sink type")
