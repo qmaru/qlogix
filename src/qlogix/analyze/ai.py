@@ -8,7 +8,10 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from qlogix.analyze.base import Analyze, AnalyzeBaseContent
 from qlogix.config import get_analyze_config
+from qlogix.logutil import get_logger, log_external_call
 from qlogix.source.base import SourceBaseContent
+
+logger = get_logger(__name__)
 
 
 class AIContent(AnalyzeBaseContent):
@@ -38,6 +41,12 @@ class AIAnalyze(Analyze[AIContent]):
 
     def run(self, events: list[SourceBaseContent]) -> AIContent:
         logs = json.dumps([event.model_dump() for event in events], ensure_ascii=False)
-        result = self.agent.run_sync(user_prompt=(f"Analyze the following logs:\n\n{logs}"))
+        result = log_external_call(
+            logger,
+            "ai.run_sync",
+            lambda: self.agent.run_sync(user_prompt=(f"Analyze the following logs:\n\n{logs}")),
+            analyzer=self.__class__.__name__,
+            event_count=len(events),
+        )
 
         return AIContent(result=result.output)

@@ -3,7 +3,10 @@ from typing import Any
 
 import httpx
 
+from qlogix.logutil import get_logger, log_external_call
 from qlogix.source.base import Source, SourceBaseContent, SourceType
+
+logger = get_logger(__name__)
 
 
 class HTTPSource(Source):
@@ -23,7 +26,13 @@ class HTTPSource(Source):
 
     def fetch(self) -> list[SourceBaseContent]:
         with httpx.Client(timeout=30) as client:
-            response = client.get(self.url)
+            response = log_external_call(
+                logger,
+                "http.get",
+                lambda: client.get(self.url),
+                source=self.source_name,
+                url=self.url,
+            )
             response.raise_for_status()
 
         content_type = response.headers.get("content-type", "").lower()

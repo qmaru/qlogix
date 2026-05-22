@@ -1,6 +1,9 @@
 import subprocess
 
+from qlogix.logutil import get_logger, log_external_call
 from qlogix.source.base import Source, SourceBaseContent, SourceType
+
+logger = get_logger(__name__)
 
 
 class CommandSource(Source):
@@ -23,7 +26,13 @@ class CommandSource(Source):
             cmd = shell_map[self.shell_type]
             shell = False
 
-        result = subprocess.run(cmd, shell=shell, capture_output=True, text=True)
+        result = log_external_call(
+            logger,
+            "subprocess.run",
+            lambda: subprocess.run(cmd, shell=shell, capture_output=True, text=True),
+            source=self.source_name,
+            shell_type=self.shell_type,
+        )
 
         if result.returncode != 0:
             raise RuntimeError(result.stderr.strip())

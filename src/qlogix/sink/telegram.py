@@ -2,7 +2,10 @@ import httpx
 
 from qlogix.analyze.base import AnalyzeBaseContent
 from qlogix.config import TelegramSinkConfig, get_sink_config
+from qlogix.logutil import get_logger, log_external_call
 from qlogix.sink.base import Sink
+
+logger = get_logger(__name__)
 
 
 class TelegramSink(Sink):
@@ -18,7 +21,13 @@ class TelegramSink(Sink):
             "chat_id": self.chat_id,
             "text": message,
         }
-        httpx.post(url, json=payload)
+        response = log_external_call(
+            logger,
+            "telegram.send_message",
+            lambda: httpx.post(url, json=payload),
+            sink="telegram",
+        )
+        response.raise_for_status()
 
     def write(self, content: AnalyzeBaseContent):
         message = content.result

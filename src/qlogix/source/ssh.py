@@ -4,7 +4,10 @@ from urllib.parse import urlparse
 import paramiko
 from pydantic import BaseModel, Field
 
+from qlogix.logutil import get_logger, log_external_call
 from qlogix.source.base import Source, SourceBaseContent, SourceType
+
+logger = get_logger(__name__)
 
 
 class SSHConfig(BaseModel):
@@ -51,8 +54,14 @@ class SSHSource(Source):
 
     def fetch(self) -> list[SourceBaseContent]:
         with self.__ssh_connect() as client:
-            stdin, stdout, stderr = client.exec_command(f"cat {self.log_path}")
-            lines = stdout.readlines()
+            lines = log_external_call(
+                logger,
+                "ssh.exec_command",
+                lambda: client.exec_command(f"cat {self.log_path}")[1].readlines(),
+                source=self.source_name,
+                host=self.ssh_config.host,
+                path=self.log_path,
+            )
         return [
             SourceBaseContent(
                 source=SourceType.SSH, source_name=self.source_name, message=line.strip()
