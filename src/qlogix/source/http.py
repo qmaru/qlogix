@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 
-from qlogix.source.base import Source
+from qlogix.source.base import Source, SourceBaseContent, SourceType
 
 
 class HTTPSource(Source):
@@ -12,24 +12,29 @@ class HTTPSource(Source):
         self.source_name = source_name
 
     @staticmethod
-    def _normalize(data: Any, source_name: str | None = None) -> list[dict]:
+    def _normalize(data: Any, source_name: str | None = None) -> list[SourceBaseContent]:
         if not isinstance(data, list):
             data = [data]
 
-        return [{"source": "http", "source_name": source_name, "message": item} for item in data]
+        return [
+            SourceBaseContent(source=SourceType.HTTP, source_name=source_name, message=item)
+            for item in data
+        ]
 
-    def fetch(self) -> list[dict]:
+    def fetch(self) -> list[SourceBaseContent]:
         with httpx.Client(timeout=30) as client:
             response = client.get(self.url)
-
-        response.raise_for_status()
+            response.raise_for_status()
 
         content_type = response.headers.get("content-type", "").lower()
 
-        if "application/json" in content_type:
+        if "application/json" in content_type or content_type.endswith("+json"):
             return self._normalize(response.json(), self.source_name)
 
         if "application/x-ndjson" in content_type:
-            return [json.loads(line) for line in response.text.splitlines() if line.strip()]
+            return self._normalize(
+                [json.loads(line) for line in response.text.splitlines() if line.strip()],
+                self.source_name,
+            )
 
         return self._normalize(response.text.splitlines(), self.source_name)

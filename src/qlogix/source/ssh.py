@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import paramiko
 from pydantic import BaseModel, Field
 
-from qlogix.source.base import Source
+from qlogix.source.base import Source, SourceBaseContent, SourceType
 
 
 class SSHConfig(BaseModel):
@@ -16,7 +16,13 @@ class SSHConfig(BaseModel):
 
 
 class SSHSource(Source):
-    def __init__(self, target: str, password: str | None = None, key: str | None = None, source_name: str | None = None):
+    def __init__(
+        self,
+        target: str,
+        password: str | None = None,
+        key: str | None = None,
+        source_name: str | None = None,
+    ):
         config = parse_ssh_target(target, password, key)
 
         self.log_path = config[0]
@@ -37,11 +43,16 @@ class SSHSource(Source):
             )
         return client
 
-    def fetch(self) -> list[dict]:
+    def fetch(self) -> list[SourceBaseContent]:
         with self.__ssh_connect() as client:
             stdin, stdout, stderr = client.exec_command(f"cat {self.log_path}")
             lines = stdout.readlines()
-        return [{"source": "ssh", "source_name": self.source_name, "message": line.strip()} for line in lines]
+        return [
+            SourceBaseContent(
+                source=SourceType.SSH, source_name=self.source_name, message=line.strip()
+            )
+            for line in lines
+        ]
 
 
 def parse_ssh_target(

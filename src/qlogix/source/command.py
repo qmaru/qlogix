@@ -1,20 +1,15 @@
 import subprocess
 
-from qlogix.source.base import Source
+from qlogix.source.base import Source, SourceBaseContent, SourceType
 
 
 class CommandSource(Source):
-    def __init__(
-        self,
-        command: str,
-        shell_type: str = "default",
-        source_name: str | None = None,
-    ):
+    def __init__(self, command: str, shell_type: str = "default", source_name: str | None = None):
         self.command = command
         self.shell_type = shell_type
         self.source_name = source_name
 
-    def fetch(self) -> list[dict]:
+    def fetch(self) -> list[SourceBaseContent]:
         shell_map = {
             "powershell": ["powershell", "-NoProfile", "-Command", self.command],
             "cmd": ["cmd", "/c", self.command],
@@ -34,7 +29,9 @@ class CommandSource(Source):
             raise RuntimeError(result.stderr.strip())
 
         return [
-            {"source": "command", "source_name": self.source_name, "message": line.strip()}
+            SourceBaseContent(
+                source=SourceType.COMMAND, source_name=self.source_name, message=line.strip()
+            )
             for line in result.stdout.splitlines()
             if line.strip()
         ]
