@@ -53,6 +53,8 @@ def get_parser():
 
     sub = parser.add_subparsers(dest="command")
 
+    sub.add_parser("run", help="Run the default pipeline")
+
     source_parser = sub.add_parser("source")
     add_source_args(source_parser)
 
@@ -75,8 +77,9 @@ def run():
     args = parser.parse_args()
 
     match args.command:
-        case None:
-            print(Pipeline().run())
+        case "run":
+            result = Pipeline().run()
+            print(result.model_dump_json(indent=2))
 
         case "source":
             events = load_events(args)
@@ -98,3 +101,6 @@ def run():
             analyzers = {"ai": AIAnalyze, "stats": StatsAnalyze}
             result = analyzers[args.analyzer]().run(events)
             print(result.model_dump_json(indent=2))
+
+        case _:
+            parser.print_help()
