@@ -117,28 +117,30 @@ class TelegramSinkConfig(BaseModel):
     token: str | None = None  # QLOGIX_TELEGRAM_TOKEN
     chat_id: str | None = None  # QLOGIX_TELEGRAM_CHAT_ID
 
-    @model_validator(mode="after")
-    def validate_credentials(self):
-        if not self.token and not os.getenv("QLOGIX_TELEGRAM_TOKEN"):
-            raise ValueError("telegram sink requires `token` or env `QLOGIX_TELEGRAM_TOKEN`")
+    @model_validator(mode="before")
+    @classmethod
+    def load_env(cls, data: dict | None):
+        data = data or {}
 
-        if not self.chat_id and not os.getenv("QLOGIX_TELEGRAM_CHAT_ID"):
-            raise ValueError("telegram sink requires `chat_id` or env `QLOGIX_TELEGRAM_CHAT_ID`")
+        data["token"] = data.get("token") or os.getenv("QLOGIX_TELEGRAM_TOKEN")
+        data["chat_id"] = data.get("chat_id") or os.getenv("QLOGIX_TELEGRAM_CHAT_ID")
 
-        return self
+        missing = []
 
-    @property
-    def resolved_token(self) -> str:
-        return self.token or os.environ["QLOGIX_TELEGRAM_TOKEN"]
+        if not data["token"]:
+            missing.append("QLOGIX_TELEGRAM_TOKEN")
 
-    @property
-    def resolved_chat_id(self) -> str:
-        return self.chat_id or os.environ["QLOGIX_TELEGRAM_CHAT_ID"]
+        if not data["chat_id"]:
+            missing.append("QLOGIX_TELEGRAM_CHAT_ID")
+
+        if missing:
+            raise ValueError(f"missing: {', '.join(missing)}")
+
+        return data
 
     @property
     def unique_key(self) -> str:
-        chat_id = self.chat_id or os.getenv("QLOGIX_TELEGRAM_CHAT_ID")
-        return f"telegram:{chat_id}"
+        return f"telegram:{self.chat_id}"
 
 
 Sink = Annotated[
