@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from qlogix.sink.base import Sink
 from qlogix.analyze.base import AnalyzeBaseContent
+from qlogix.sink.base import Sink
 
 
 class FileSink(Sink):

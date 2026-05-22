@@ -1,5 +1,5 @@
-from qlogix.sink.base import Sink
 from qlogix.analyze.base import AnalyzeBaseContent
+from qlogix.sink.base import Sink
 
 
 class StdoutSink(Sink):

@@ -1,7 +1,6 @@
 from collections import Counter
 
 from pydantic import Field
-from pydantic_ai import result
 
 from qlogix.analyze.base import Analyze, AnalyzeBaseContent
 from qlogix.source.base import SourceBaseContent
