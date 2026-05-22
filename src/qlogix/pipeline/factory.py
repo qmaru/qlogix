@@ -2,6 +2,7 @@ from qlogix.analyze.ai import AIAnalyze
 from qlogix.config import Filter as FilterType
 from qlogix.config import Source as SourceType
 from qlogix.filter.base import Filter
+from qlogix.source.base import Source
 from qlogix.source.command import CommandSource
 from qlogix.source.file import FileSource
 from qlogix.source.http import HTTPSource
@@ -10,7 +11,7 @@ from qlogix.source.stdin import StdinSource
 
 
 def create_sources(configs: list[SourceType]):
-    sources = []
+    sources: list[Source] = []
 
     for cfg in configs:
         source_name = cfg.source_name if cfg.source_name else "unknown"
@@ -55,7 +56,7 @@ def create_sources(configs: list[SourceType]):
 
 
 def create_filters(configs: FilterType):
-    filters = []
+    filters: list[Filter] = []
 
     for plugin in configs.plugins:
         plugin = Filter.load(plugin)
