@@ -1,5 +1,7 @@
 import json
+from datetime import UTC, datetime
 
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -8,6 +10,11 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from qlogix.analyze.base import Analyze
 from qlogix.config import get_analyze_config
+
+
+class AIContent(BaseModel):
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    analysis: str
 
 
 class AIAnalyze(Analyze):
@@ -28,14 +35,8 @@ class AIAnalyze(Analyze):
 
         self.agent = Agent(model, system_prompt=cfg.system_prompt)
 
-    def run(self, events: list[dict]) -> str:
+    def run(self, events: list[dict]) -> AIContent:
         logs = json.dumps(events, ensure_ascii=False)
-        result = self.agent.run_sync(
-            f"""
-Analyze the following logs:
+        result = self.agent.run_sync(user_prompt=(f"Analyze the following logs:\n\n{logs}"))
 
-{logs}
-"""
-        )
-
-        return result.output
+        return AIContent(analysis=result.output)

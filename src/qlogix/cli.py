@@ -95,8 +95,6 @@ def run():
 
         case "analyze":
             events = load_events(args)
-
             analyzers = {"ai": AIAnalyze, "stats": StatsAnalyze}
-
             result = analyzers[args.analyzer]().run(events)
-            print(result)
+            print(result.model_dump_json(indent=2))
