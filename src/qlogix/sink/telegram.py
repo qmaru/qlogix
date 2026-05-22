@@ -9,8 +9,11 @@ logger = get_logger(__name__)
 
 
 class TelegramSink(Sink):
-    def __init__(self):
-        config = next((x for x in get_sink_config() if x.type == "telegram"), TelegramSinkConfig())
+    def __init__(self, config: TelegramSinkConfig | None = None):
+        if config is None:
+            config = next((x for x in get_sink_config() if x.type == "telegram"), None)
+            if config is None:
+                raise ValueError("Telegram sink config not found")
 
         self.token = config.token
         self.chat_id = config.chat_id

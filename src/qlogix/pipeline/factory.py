@@ -90,6 +90,6 @@ def create_sink(configs: list[SinkType]) -> list[Sink]:
         elif config.type == "stdout":
             sinks.append(StdoutSink())
         elif config.type == "telegram":
-            sinks.append(TelegramSink())
+            sinks.append(TelegramSink(config))
 
     return sinks
