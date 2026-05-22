@@ -1,5 +1,12 @@
-from qlogix.config import get_filter_config, get_source_config
-from qlogix.pipeline.factory import create_analyze, create_filters, create_sources
+from qlogix.config import get_filter_config, get_sink_config, get_source_config
+from qlogix.sink.base import Sink
+from qlogix.pipeline.factory import (
+    create_ai_analyze,
+    create_filters,
+    create_passthrough_analyze,
+    create_sink,
+    create_sources,
+)
 from qlogix.source.base import SourceBaseContent
 
 
@@ -7,7 +14,9 @@ class Pipeline:
     def __init__(self):
         self.sources = create_sources(get_source_config())
         self.filters = create_filters(get_filter_config())
-        self.analyze = create_analyze()
+        self.analyze_ai = create_ai_analyze()
+        self.analyze_passthrough = create_passthrough_analyze()
+        self.sinks = create_sink(get_sink_config())
 
     def run(self, is_analyze=True):
         events: list[SourceBaseContent] = []
@@ -19,6 +28,8 @@ class Pipeline:
             events = filter_.process(events)
 
         if is_analyze:
-            return self.analyze.run(events)
+            content = self.analyze_ai.run(events)
+        else:
+            content = self.analyze_passthrough.run(events)
 
-        return events
+        Sink.run(self.sinks, content)

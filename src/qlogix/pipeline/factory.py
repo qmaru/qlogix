@@ -1,7 +1,12 @@
 from qlogix.analyze.ai import AIAnalyze
+from qlogix.analyze.passthrough import PassthroughAnalyze
 from qlogix.config import Filter as FilterType
+from qlogix.config import Sink as SinkType
 from qlogix.config import Source as SourceType
 from qlogix.filter.base import Filter
+from qlogix.sink.base import Sink
+from qlogix.sink.file import FileSink
+from qlogix.sink.stdout import StdoutSink
 from qlogix.source.base import Source
 from qlogix.source.command import CommandSource
 from qlogix.source.file import FileSource
@@ -65,5 +70,23 @@ def create_filters(configs: FilterType):
     return filters
 
 
-def create_analyze():
+def create_ai_analyze():
     return AIAnalyze()
+
+
+def create_passthrough_analyze():
+    return PassthroughAnalyze()
+
+
+def create_sink(configs: list[SinkType]) -> list[Sink]:
+    sinks: list[Sink] = []
+
+    for config in configs:
+        if config.type == "file":
+            if not config.path:
+                raise ValueError("File sink requires 'path'")
+            sinks.append(FileSink(config.path))
+        elif config.type == "stdout":
+            sinks.append(StdoutSink())
+
+    return sinks

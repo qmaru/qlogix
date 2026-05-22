@@ -22,6 +22,11 @@ class SourceType(StrEnum):
     STDIN = "stdin"
 
 
+class SinkType(StrEnum):
+    FILE = "file"
+    STDOUT = "stdout"
+
+
 class ShellType(StrEnum):
     CMD = "cmd"
     BASH = "bash"
@@ -89,10 +94,48 @@ class Analyze(BaseModel):
     system_prompt: str = "Analyze logs and provide concise insights."
 
 
+class FileSinkConfig(BaseModel):
+    type: Literal["file"] = "file"
+    path: str
+
+    @property
+    def unique_key(self):
+        return str(Path(self.path).expanduser().resolve())
+
+
+class StdoutSinkConfig(BaseModel):
+    type: Literal["stdout"] = "stdout"
+
+    @property
+    def unique_key(self):
+        return "stdout"
+
+
+Sink = Annotated[
+    FileSinkConfig | StdoutSinkConfig,
+    Field(discriminator="type"),
+]
+
+
 class Config(BaseModel):
     source: list[Source]
     filter: Filter
     analyze: Analyze
+    sink: list[Sink]
+
+    @model_validator(mode="after")
+    def validate_sink(self):
+        seen: set[str] = set()
+
+        for sink in self.sink:
+            key = sink.unique_key
+
+            if key in seen:
+                raise ValueError(f"Duplicate sink: {key}")
+
+            seen.add(key)
+
+        return self
 
 
 @lru_cache()
@@ -116,3 +159,7 @@ def get_filter_config() -> Filter:
 
 def get_analyze_config() -> Analyze:
     return __load_config().analyze
+
+
+def get_sink_config() -> list[Sink]:
+    return __load_config().sink

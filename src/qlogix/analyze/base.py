@@ -11,3 +11,5 @@ class AnalyzeBaseContent(BaseModel):
 
 class Analyze(Protocol):
     def run(self, events: list[SourceBaseContent]) -> AnalyzeBaseContent: ...
+
+

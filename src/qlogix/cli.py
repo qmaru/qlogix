@@ -1,11 +1,14 @@
 import argparse
-import json
 
-from qlogix.analyze.ai import AIAnalyze
-from qlogix.analyze.stats import StatsAnalyze
+from qlogix.analyze import ANALYZE_REGISTRY
+from qlogix.analyze.base import AnalyzeBaseContent
+from qlogix.analyze.passthrough import PassthroughAnalyze
 from qlogix.config import ShellType, SourceType
 from qlogix.filter.base import Filter
 from qlogix.pipeline.pipeline import Pipeline
+from qlogix.sink.base import Sink
+from qlogix.sink.file import FileSink
+from qlogix.sink.stdout import StdoutSink
 from qlogix.source.command import CommandSource
 from qlogix.source.file import FileSource
 from qlogix.source.http import HTTPSource
@@ -14,16 +17,28 @@ from qlogix.source.stdin import StdinSource
 
 
 def add_source_args(parser):
-    parser.add_argument("source_type", nargs="?", choices=[e.value for e in SourceType])
-
     parser.add_argument(
-        "--shell", choices=[e.value for e in ShellType], default=ShellType.BASH.value
+        "source_type", nargs="?", choices=[e.value for e in SourceType], help="Source type"
     )
 
-    parser.add_argument("target", nargs="?")
-    parser.add_argument("--key", help="SSH private key path")
-    parser.add_argument("--password", help="SSH password")
-    parser.add_argument("--source_name", help="Source name")
+    parser.add_argument(
+        "source_spec", nargs="?", help="Source specification (e.g. file path, URL, command)"
+    )
+
+    # common args
+    parser.add_argument("--source_name", default="cli", help="Source name")
+
+    # command args
+    parser.add_argument(
+        "--shell",
+        choices=[e.value for e in ShellType],
+        default=ShellType.BASH.value,
+        help="Shell type for command source",
+    )
+
+    # extra args for SSH
+    parser.add_argument("--key", help="SSH private key path for ssh source")
+    parser.add_argument("--password", help="SSH password for ssh source")
 
 
 def load_events(args):
@@ -31,16 +46,16 @@ def load_events(args):
         raise ValueError("source_type required")
 
     if args.source_type == "file":
-        return FileSource(args.target, source_name=args.source_name).fetch()
+        return FileSource(args.source_spec, source_name=args.source_name).fetch()
 
     if args.source_type == "http":
-        return HTTPSource(args.target, source_name=args.source_name).fetch()
+        return HTTPSource(args.source_spec, source_name=args.source_name).fetch()
 
     if args.source_type == "ssh":
-        return SSHSource(args.target, source_name=args.source_name).fetch()
+        return SSHSource(args.source_spec, source_name=args.source_name).fetch()
 
     if args.source_type == "command":
-        return CommandSource(args.target, args.shell, source_name=args.source_name).fetch()
+        return CommandSource(args.source_spec, args.shell, source_name=args.source_name).fetch()
 
     if args.source_type == "stdin":
         return StdinSource(source_name=args.source_name).fetch()
@@ -48,12 +63,31 @@ def load_events(args):
     raise ValueError("Invalid source type")
 
 
+def write_events(content: AnalyzeBaseContent, args: argparse.Namespace):
+    if not args.sink_type:
+        raise ValueError("sink_type required")
+
+    if args.sink_type == "stdout":
+        StdoutSink().write(content)
+        return
+
+    if args.sink_type == "file":
+        path = args.sink_spec or "output.log"
+        FileSink(path).write(content)
+        return
+
+    raise ValueError("Invalid sink type")
+
+
 def get_parser():
     parser = argparse.ArgumentParser()
 
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("run", help="Run the default pipeline")
+    run_parser = sub.add_parser("run", help="Run the default pipeline")
+    run_parser.add_argument(
+        "--no_analyze", action="store_true", help="Run pipeline without analyze"
+    )
 
     source_parser = sub.add_parser("source", help="Fetch events from a source")
     add_source_args(source_parser)
@@ -66,8 +100,27 @@ def get_parser():
 
     # Analyze subparser with options for AI and stats
     analyze_parser = sub.add_parser("analyze", help="Analyze events using AI or stats")
-    analyze_parser.add_argument("analyzer", choices=["ai", "stats"], help="Analyzer type")
+    analyze_parser.add_argument(
+        "analyzer", choices=list(ANALYZE_REGISTRY.keys()), help="Analyzer type"
+    )
     add_source_args(analyze_parser)
+
+    # Sink
+    sink_parser = sub.add_parser("sink", help="Send events to a sink")
+    sink_parser.add_argument("--list", action="store_true", help="List available sinks")
+    sink_parser.add_argument("sink_type", nargs="?", help="Sink type")
+    add_source_args(sink_parser)
+    sink_parser.add_argument("sink_spec", nargs="?", help="Sink specification (e.g. file path)")
+
+    # Pipeline
+    pipeline_parser = sub.add_parser("pipeline", help="Manaual pipeline execution")
+    add_source_args(pipeline_parser)
+    pipeline_parser.add_argument("filter_plugin", nargs="?", help="Filter plugin name")
+    pipeline_parser.add_argument(
+        "analyzer", nargs="?", choices=list(ANALYZE_REGISTRY.keys()), help="Analyzer type"
+    )
+    pipeline_parser.add_argument("sink_type", nargs="?", help="Sink type")
+    pipeline_parser.add_argument("sink_spec", nargs="?", help="Sink specification (e.g. file path)")
 
     return parser
 
@@ -78,12 +131,12 @@ def run():
 
     match args.command:
         case "run":
-            result = Pipeline().run()
-            print(result.model_dump_json(indent=2))
+            Pipeline().run(is_analyze=not args.no_analyze)
 
         case "source":
             events = load_events(args)
-            print(json.dumps(events, indent=2))
+            for event in events:
+                print(event.model_dump_json(indent=2, ensure_ascii=False))
 
         case "filter":
             if args.list:
@@ -93,14 +146,37 @@ def run():
             events = load_events(args)
             plugin = Filter.load(args.plugin_name)
 
-            result = plugin.process(events)
-            print(json.dumps(result, indent=2))
+            results = plugin.process(events)
+            for result in results:
+                print(result.model_dump_json(indent=2, ensure_ascii=False))
 
         case "analyze":
             events = load_events(args)
-            analyzers = {"ai": AIAnalyze, "stats": StatsAnalyze}
-            result = analyzers[args.analyzer]().run(events)
-            print(result.model_dump_json(indent=2))
+            result = ANALYZE_REGISTRY[args.analyzer]().run(events)
+            print(result.model_dump_json(indent=2, ensure_ascii=False))
+
+        case "sink":
+            if args.list:
+                print(*Sink.names(), sep="\n")
+                return
+
+            events = load_events(args)
+            content = PassthroughAnalyze().run(events)
+            write_events(content, args)
+
+        case "pipeline":
+            events = load_events(args)
+
+            if args.filter_plugin:
+                plugin = Filter.load(args.filter_plugin)
+                events = plugin.process(events)
+
+            if args.analyzer:
+                content = ANALYZE_REGISTRY[args.analyzer]().run(events)
+            else:
+                content = PassthroughAnalyze().run(events)
+
+            write_events(content, args)
 
         case _:
             parser.print_help()
