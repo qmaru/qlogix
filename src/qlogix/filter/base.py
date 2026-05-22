@@ -1,6 +1,15 @@
 import re
+from enum import IntEnum
 
 from qlogix.source.base import SourceBaseContent
+
+
+class FilterStage(IntEnum):
+    PREPROCESS = 1
+    TRANSFORM = 2
+    REDUCE = 3
+    AGGREGATE = 4
+    FINAL = 5
 
 
 def camel_to_snake(name: str):
@@ -11,6 +20,8 @@ def camel_to_snake(name: str):
 
 class Filter:
     _registry: dict[str, type["Filter"]] = {}
+
+    stage = FilterStage.TRANSFORM
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -24,6 +35,10 @@ class Filter:
     @classmethod
     def load(cls, name: str) -> "Filter":
         return cls._registry[name]()
+
+    @classmethod
+    def loads(cls, names: list[str]) -> list["Filter"]:
+        return sorted((cls.load(name) for name in names), key=lambda f: f.stage)
 
     def process(self, events: list[SourceBaseContent]) -> list[SourceBaseContent]:
         raise NotImplementedError(f"{self.__class__.__name__}.process() not implemented")

@@ -42,7 +42,11 @@ class Pipeline:
                 with log_stage(logger, "filter", filter=filter_.__class__.__name__):
                     events = filter_.process(events)
 
-        analyzer_name = self.analyze_ai.__class__.__name__ if is_analyze else self.analyze_passthrough.__class__.__name__
+        analyzer_name = (
+            self.analyze_ai.__class__.__name__
+            if is_analyze
+            else self.analyze_passthrough.__class__.__name__
+        )
         with log_stage(logger, "analyze", analyzer=analyzer_name, event_count=len(events)):
             if is_analyze:
                 content = self.analyze_ai.run(events)

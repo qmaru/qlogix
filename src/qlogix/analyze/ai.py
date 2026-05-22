@@ -14,11 +14,11 @@ from qlogix.source.base import SourceBaseContent
 logger = get_logger(__name__)
 
 
-class AIContent(AnalyzeBaseContent):
+class AiContent(AnalyzeBaseContent):
     pass
 
 
-class AIAnalyze(Analyze[AIContent]):
+class AiAnalyze(Analyze[AiContent]):
     def __init__(self):
         cfg = get_analyze_config()
 
@@ -39,7 +39,7 @@ class AIAnalyze(Analyze[AIContent]):
 
         self.agent = Agent(model, system_prompt=cfg.system_prompt)
 
-    def run(self, events: list[SourceBaseContent]) -> AIContent:
+    def run(self, events: list[SourceBaseContent]) -> AiContent:
         logs = json.dumps([event.model_dump() for event in events], ensure_ascii=False)
         result = log_external_call(
             logger,
@@ -49,4 +49,4 @@ class AIAnalyze(Analyze[AIContent]):
             event_count=len(events),
         )
 
-        return AIContent(result=result.output)
+        return AiContent(result=result.output)

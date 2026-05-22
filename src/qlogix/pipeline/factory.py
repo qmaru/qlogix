@@ -1,4 +1,4 @@
-from qlogix.analyze.ai import AIAnalyze
+from qlogix.analyze.ai import AiAnalyze
 from qlogix.analyze.passthrough import PassthroughAnalyze
 from qlogix.config import Filter as FilterType
 from qlogix.config import Sink as SinkType
@@ -62,17 +62,11 @@ def create_sources(configs: list[SourceType]):
 
 
 def create_filters(configs: FilterType):
-    filters: list[Filter] = []
-
-    for plugin in configs.plugins:
-        plugin = Filter.load(plugin)
-        filters.append(plugin)
-
-    return filters
+    return Filter.loads(configs.plugins)
 
 
 def create_ai_analyze():
-    return AIAnalyze()
+    return AiAnalyze()
 
 
 def create_passthrough_analyze():

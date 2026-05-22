@@ -1,10 +1,12 @@
 from collections import defaultdict
 
-from qlogix.filter.base import Filter
+from qlogix.filter.base import Filter, FilterStage
 from qlogix.source.base import SourceBaseContent
 
 
 class GroupBySourceFilter(Filter):
+    stage = FilterStage.AGGREGATE
+
     def process(self, events: list[SourceBaseContent]) -> list[SourceBaseContent]:
         groups = defaultdict(list)
         sources = {}
