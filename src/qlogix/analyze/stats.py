@@ -1,21 +1,20 @@
 from collections import Counter
-from datetime import UTC, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from qlogix.analyze.base import Analyze
+from qlogix.analyze.base import Analyze, AnalyzeBaseContent
+from qlogix.source.base import SourceBaseContent
 
 
-class StatsContent(BaseModel):
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+class StatsContent(AnalyzeBaseContent):
     total_events: int = 0
-    source_counts: dict[str, int] = Field(default_factory=dict)
+    source_counts: dict[str | None, int] = Field(default_factory=dict)
     summary: str | None = None
 
 
 class StatsAnalyze(Analyze):
-    def run(self, events: list[dict]) -> StatsContent:
-        source_counts = Counter(event["source"] for event in events)
+    def run(self, events: list[SourceBaseContent]) -> StatsContent:
+        source_counts = Counter(event.source_name for event in events)
         return StatsContent(
             total_events=len(events),
             source_counts=dict(source_counts),
