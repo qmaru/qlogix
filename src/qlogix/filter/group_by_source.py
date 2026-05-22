@@ -11,12 +11,12 @@ class GroupBySourceFilter(Filter):
 
         for event in events:
             source_name = event.source_name or "unknown"
-            groups[source_name].append(event.message)
+            groups[source_name].append(str(event.message))
             sources.setdefault(source_name, event.source)
 
         return [
             SourceBaseContent(
-                source=sources[source_name], source_name=source_name, message=messages
+                source=sources[source_name], source_name=source_name, message="\n".join(messages)
             )
             for source_name, messages in groups.items()
         ]
