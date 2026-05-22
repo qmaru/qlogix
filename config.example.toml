@@ -22,6 +22,13 @@ command = "tail -f /var/log/syslog"
 [filter]
 plugins = ["passthrough"]
 
+[[sink]]
+type = "file"
+path = "/path/to/output.log"
+
+[[sink]]
+type = "stdout"
+
 [analyze]
 provider = "openai"
 model = "gpt-5"
