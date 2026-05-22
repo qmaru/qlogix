@@ -5,7 +5,6 @@ from qlogix.analyze.base import AnalyzeBaseContent
 from qlogix.analyze.passthrough import PassthroughAnalyze
 from qlogix.config import ShellType, SourceType
 from qlogix.filter.base import Filter
-from qlogix.logutil import configure_logging, get_logger, log_stage, set_trace_id
 from qlogix.pipeline.pipeline import Pipeline
 from qlogix.sink.base import Sink
 from qlogix.sink.file import FileSink
@@ -16,8 +15,6 @@ from qlogix.source.file import FileSource
 from qlogix.source.http import HTTPSource
 from qlogix.source.ssh import SSHSource
 from qlogix.source.stdin import StdinSource
-
-logger = get_logger(__name__)
 
 
 def add_source_args(parser: argparse.ArgumentParser):
@@ -139,73 +136,60 @@ def get_parser():
 
 
 def run():
-    configure_logging()
-    set_trace_id()
     parser = get_parser()
     args = parser.parse_args()
 
     try:
         match args.command:
             case "run":
-                with log_stage(logger, "cli.run", command="run"):
-                    Pipeline().run(is_analyze=not args.no_analyze)
+                Pipeline().run(is_analyze=not args.no_analyze)
 
             case "source":
-                with log_stage(logger, "cli.source", command="source"):
-                    events = load_events(args)
-                    for event in events:
-                        print(event.model_dump_json(indent=2, ensure_ascii=False))
+                events = load_events(args)
+                for event in events:
+                    print(event.model_dump_json(indent=2, ensure_ascii=False))
 
             case "filter":
-                with log_stage(logger, "cli.filter", command="filter"):
-                    if args.list:
-                        print(*Filter.names(), sep="\n")
-                        return
+                if args.list:
+                    print(*Filter.names(), sep="\n")
+                    return
 
-                    events = load_events(args)
-                    plugin = Filter.load(args.plugin_name)
+                events = load_events(args)
+                plugin = Filter.load(args.plugin_name)
 
-                    results = plugin.process(events)
-                    for result in results:
-                        print(result.model_dump_json(indent=2, ensure_ascii=False))
-
-            case "analyze":
-                with log_stage(logger, "cli.analyze", command="analyze"):
-                    events = load_events(args)
-                    result = ANALYZE_REGISTRY[args.analyzer]().run(events)
+                results = plugin.process(events)
+                for result in results:
                     print(result.model_dump_json(indent=2, ensure_ascii=False))
 
-            case "sink":
-                with log_stage(logger, "cli.sink", command="sink"):
-                    if args.list:
-                        print(*Sink.names(), sep="\n")
-                        return
+            case "analyze":
+                events = load_events(args)
+                result = ANALYZE_REGISTRY[args.analyzer]().run(events)
+                print(result.model_dump_json(indent=2, ensure_ascii=False))
 
-                    events = load_events(args)
-                    content = PassthroughAnalyze().run(events)
-                    write_events(content, args)
+            case "sink":
+                if args.list:
+                    print(*Sink.names(), sep="\n")
+                    return
+
+                events = load_events(args)
+                content = PassthroughAnalyze().run(events)
+                write_events(content, args)
 
             case "pipeline":
-                with log_stage(logger, "cli.pipeline", command="pipeline"):
-                    events = load_events(args)
+                events = load_events(args)
 
-                    if args.filter_plugin:
-                        with log_stage(logger, "cli.pipeline.filter", filter=args.filter_plugin):
-                            plugin = Filter.load(args.filter_plugin)
-                            events = plugin.process(events)
+                if args.filter_plugin:
+                    plugin = Filter.load(args.filter_plugin)
+                    events = plugin.process(events)
 
-                    analyzer_name = args.analyzer or "passthrough"
-                    with log_stage(logger, "cli.pipeline.analyze", analyzer=analyzer_name):
-                        if args.analyzer:
-                            content = ANALYZE_REGISTRY[args.analyzer]().run(events)
-                        else:
-                            content = PassthroughAnalyze().run(events)
+                if args.analyzer:
+                    content = ANALYZE_REGISTRY[args.analyzer]().run(events)
+                else:
+                    content = PassthroughAnalyze().run(events)
 
-                    with log_stage(logger, "cli.pipeline.sink", sink=args.sink_type):
-                        write_events(content, args)
+                write_events(content, args)
 
             case _:
                 parser.print_help()
     except Exception:
-        logger.exception("fatal_error command=%s", args.command or "help")
         raise SystemExit(1)

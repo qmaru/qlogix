@@ -1,9 +1,9 @@
-from qlogix.filter.base import Filter, FilterStage
+from qlogix.filter.base import Filter, FilterType
 from qlogix.source.base import SourceBaseContent
 
 
 class DedupFilter(Filter):
-    stage = FilterStage.REDUCE
+    stage = FilterType.REDUCE
 
     def process(self, events: list[SourceBaseContent]) -> list[SourceBaseContent]:
         seen = set()

@@ -4,12 +4,13 @@ from enum import IntEnum
 from qlogix.source.base import SourceBaseContent
 
 
-class FilterStage(IntEnum):
-    PREPROCESS = 1
-    TRANSFORM = 2
-    REDUCE = 3
-    AGGREGATE = 4
-    FINAL = 5
+class FilterType(IntEnum):
+    NONE = 0
+    SELECT = 1
+    MODIFY = 2
+    EXPAND = 3
+    REDUCE = 4
+    AGGREGATE = 5
 
 
 def camel_to_snake(name: str):
@@ -21,7 +22,7 @@ def camel_to_snake(name: str):
 class Filter:
     _registry: dict[str, type["Filter"]] = {}
 
-    stage = FilterStage.TRANSFORM
+    stage = FilterType.NONE
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

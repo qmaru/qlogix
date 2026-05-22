@@ -1,33 +1,123 @@
 import re
+from collections.abc import Callable
+from typing import Match
 
-from qlogix.filter.base import Filter, FilterStage
+from qlogix.filter.base import Filter, FilterType
 from qlogix.source.base import SourceBaseContent
+
+Replacement = str | Callable[[Match[str]], str]
 
 
 class SafeFilter(Filter):
-    stage = FilterStage.PREPROCESS
+    stage = FilterType.MODIFY
 
-    RULES = [
-        # email=xxx
-        (r"(?i)(email|user|username)=([\w\.-]+@[\w\.-]+\.\w+)", r"\1=<EMAIL>"),
-        # ip=xxx
+    @staticmethod
+    def _mask_phone(m: Match[str]) -> str:
+        prefix = m.group(1)
+        value = m.group(2)
+        suffix = m.group(3)
+
+        digits = re.sub(r"\D", "", value)
+
+        if len(digits) < 7:
+            return m.group(0)
+
+        masked_digits = digits[:3] + "*" * max(len(digits) - 7, 0) + digits[-4:]
+
+        if value.strip().startswith("+"):
+            masked_digits = "+" + masked_digits
+
+        return f"{prefix}{masked_digits}{suffix}"
+
+    @staticmethod
+    def _mask_email(m: Match[str]) -> str:
+        prefix = m.group(1)
+        value = m.group(2)
+        suffix = m.group(3)
+
+        name, domain = value.split("@", 1)
+
+        masked = f"{name[:1]}***@{domain}"
+
+        return f"{prefix}{masked}{suffix}"
+
+    @staticmethod
+    def _mask_ip(m: Match[str]) -> str:
+        prefix = m.group(1)
+        value = m.group(2)
+        suffix = m.group(3)
+
+        parts = value.split(".")
+
+        masked = f"{parts[0]}.***.***.{parts[-1]}"
+
+        return f"{prefix}{masked}{suffix}"
+
+    @staticmethod
+    def _mask_user_id(m: Match[str]) -> str:
+        prefix = m.group(1)
+        value = m.group(2)
+        suffix = m.group(3)
+
+        if len(value) <= 4:
+            masked = "***"
+        else:
+            masked = value[:1] + "***" + value[-2:]
+
+        return f"{prefix}{masked}{suffix}"
+
+    RULES: list[tuple[re.Pattern[str], Replacement]] = [
+        # email
         (
-            r"(?i)(ip|client_ip|remote_ip)=((?:25[0-5]|2[0-4]\d|1?\d?\d)"
-            r"(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3})",
-            r"\1=<IP>",
+            re.compile(
+                r'("?(?:email)"?\s*[:=]\s*"?)'
+                r"([\w\.-]+@[\w\.-]+\.\w+)"
+                r'("?)',
+                re.I,
+            ),
+            _mask_email.__func__,
         ),
-        # phone=13843347832
+        # phone
         (
-            r"(?i)(phone|mobile|tel)=((?:86[- ]?)?1[3-9]\d{9})",
-            r"\1=<PHONE>",
+            re.compile(
+                r'("?(?:phone|mobile|tel)"?\s*[:=]\s*"?)'
+                r"((?:86[- ]?)?1[3-9]\d{9})"
+                r'("?)',
+                re.I,
+            ),
+            _mask_phone.__func__,
         ),
-        # token=xxx
-        (r"(?i)(token|apikey|x-api-key|api_key|secret|password)=([^\s]+)", r"\1=<SECRET>"),
-        # uuid/request_id/trace_id
+        # ip
         (
-            r"(?i)(uuid|trace_id|request_id)="
-            r"([0-9a-f-]{36})",
-            r"\1=<UUID>",
+            re.compile(
+                r'("?(?:ip|client_ip|remote_ip)"?\s*[:=]\s*"?)'
+                r"((?:25[0-5]|2[0-4]\d|1?\d?\d)"
+                r"(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3})"
+                r'("?)',
+                re.I,
+            ),
+            _mask_ip.__func__,
+        ),
+        # userId
+        (
+            re.compile(
+                r'("?(?:userId|user_id)"?\s*[:=]\s*"?)'
+                r"([A-Za-z0-9_-]+)"
+                r'("?)',
+                re.I,
+            ),
+            _mask_user_id.__func__,
+        ),
+        # key
+        (
+            re.compile(
+                r'("?(?:token|api-key|apikey|api_key|secret|password|authorization|cookie|session|jwt)"?'
+                r'\s*[:=]\s*"?)'
+                r'([^\s",}]+)'
+                r'("?)',
+                re.I,
+            ),
+            r"\1<SECRET>\3",
         ),
     ]
 
@@ -36,7 +126,7 @@ class SafeFilter(Filter):
             msg = str(event.message)
 
             for pattern, replacement in self.RULES:
-                msg = re.sub(pattern, replacement, msg, flags=re.I)
+                msg = pattern.sub(replacement, msg)
 
             event.message = msg
 
