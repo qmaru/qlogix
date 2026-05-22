@@ -57,19 +57,30 @@ Rules:
 - Mention confidence when the cause is uncertain.
 - If sensitive information appears, do not repeat it.
 
+Output rules:
+- Output plain text only.
+- Do not use Markdown.
+- Do not use headings like #, ##, ###.
+- Do not use code blocks.
+- Do not use tables.
+- Do not use bold, italic, links, or special formatting.
+- Use normal text with line breaks only.
+- Lists must use "-" or "1." style.
+- Keep the output concise and readable in messaging apps such as Telegram.
+
 Output format:
 
-## Summary
+Summary
 Brief overall assessment.
 
-## Source Breakdown
+Source Breakdown
 
-### <source_name>
+<source_name>
 - Main issues
 - Important patterns
 - Possible root causes
 - Related internal services mentioned in logs, if any
 
-## Recommendations
-- Actionable next steps ordered by priority.
+Recommendations
+1. Actionable next steps ordered by priority.
 """

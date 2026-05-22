@@ -12,10 +12,10 @@ from qlogix.source.base import SourceBaseContent
 
 
 class AIContent(AnalyzeBaseContent):
-    analysis: str
+    pass
 
 
-class AIAnalyze(Analyze):
+class AIAnalyze(Analyze[AIContent]):
     def __init__(self):
         cfg = get_analyze_config()
 
@@ -31,10 +31,13 @@ class AIAnalyze(Analyze):
             provider = GoogleProvider(api_key=cfg.api_key)
             model = GoogleModel(cfg.model, provider=provider)
 
+        else:
+            raise ValueError(f"Unsupported provider: {cfg.provider}")
+
         self.agent = Agent(model, system_prompt=cfg.system_prompt)
 
     def run(self, events: list[SourceBaseContent]) -> AIContent:
         logs = json.dumps([event.model_dump() for event in events], ensure_ascii=False)
         result = self.agent.run_sync(user_prompt=(f"Analyze the following logs:\n\n{logs}"))
 
-        return AIContent(analysis=result.output)
+        return AIContent(result=result.output)

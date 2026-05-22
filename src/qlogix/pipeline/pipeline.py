@@ -1,5 +1,4 @@
 from qlogix.config import get_filter_config, get_sink_config, get_source_config
-from qlogix.sink.base import Sink
 from qlogix.pipeline.factory import (
     create_ai_analyze,
     create_filters,
@@ -7,6 +6,7 @@ from qlogix.pipeline.factory import (
     create_sink,
     create_sources,
 )
+from qlogix.sink.base import Sink
 from qlogix.source.base import SourceBaseContent
 
 
