@@ -1,6 +1,7 @@
 import re
 
 from qlogix.filter.base import Filter
+from qlogix.source.base import SourceBaseContent
 
 
 class SafeFilter(Filter):
@@ -23,13 +24,13 @@ class SafeFilter(Filter):
         ),
     ]
 
-    def process(self, events: list[dict]) -> list[dict]:
+    def process(self, events: list[SourceBaseContent]) -> list[SourceBaseContent]:
         for event in events:
-            msg = str(event["message"])
+            msg = str(event.message)
 
             for pattern, replacement in self.RULES:
                 msg = re.sub(pattern, replacement, msg, flags=re.I)
 
-            event["message"] = msg
+            event.message = msg
 
         return events
