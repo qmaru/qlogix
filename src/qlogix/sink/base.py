@@ -41,18 +41,18 @@ class Sink(ABC):
 
         with ThreadPoolExecutor(max_workers=len(sinks)) as pool:
             futures = [pool.submit(sink.write, content) for sink in sinks]
-            failures: list[Exception] = []
+            failures: list[tuple[str, Exception]] = []
 
             for sink, future in zip(sinks, futures, strict=False):
                 try:
                     with log_stage(logger, sink.name):
                         future.result()
                 except Exception as exc:
-                    logger.warning("init failed, sink=%s error=%s", sink.name, exc)
-                    failures.append(exc)
+                    logger.warning("sink failed: %s: %s", sink.name, exc)
+                    failures.append((sink.name, exc))
 
         if failures and len(failures) == len(sinks):
-            raise RuntimeError("All sinks failed")
+            raise RuntimeError("All sinks failed: " + ", ".join(name for name, _ in failures))
 
     @abstractmethod
     def write(self, content: AnalyzeBaseContent) -> None:

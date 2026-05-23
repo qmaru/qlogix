@@ -16,4 +16,4 @@ class FileSink(Sink):
                 f.write(payload)
 
         except OSError as e:
-            raise RuntimeError(f"Failed to write {self.path}: {e}") from e
+            raise RuntimeError(f"Failed to write {self.path}: {e}") from None

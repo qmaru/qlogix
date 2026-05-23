@@ -22,14 +22,16 @@ class TelegramSink(Sink):
 
     def __send_message(self, message: str):
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
-        payload = {
-            "chat_id": self.chat_id,
-            "text": message,
-        }
-        response = log_external_call(
-            logger, "telegram.send_message", partial(httpx.post, url, json=payload)
-        )
-        response.raise_for_status()
+        payload = {"chat_id": self.chat_id, "text": message}
+
+        try:
+            response = log_external_call(
+                logger, "telegram.send_message", partial(httpx.post, url, json=payload, timeout=30)
+            )
+            response.raise_for_status()
+
+        except httpx.HTTPError as e:
+            raise RuntimeError(f"Failed to send telegram message: {e}") from None
 
     def write(self, content: AnalyzeBaseContent):
         message = content.result
