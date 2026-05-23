@@ -5,6 +5,7 @@ from qlogix.analyze.base import AnalyzeBaseContent
 from qlogix.analyze.passthrough import PassthroughAnalyze
 from qlogix.config import ShellType, SourceType
 from qlogix.filter.base import Filter
+from qlogix.logutil import configure_logging, get_logger, log_stage, set_trace_id
 from qlogix.pipeline.pipeline import Pipeline
 from qlogix.sink.base import Sink
 from qlogix.sink.file import FileSink
@@ -15,6 +16,8 @@ from qlogix.source.file import FileSource
 from qlogix.source.http import HTTPSource
 from qlogix.source.ssh import SSHSource
 from qlogix.source.stdin import StdinSource
+
+logger = get_logger(__name__)
 
 
 def add_source_args(parser: argparse.ArgumentParser):
@@ -40,6 +43,7 @@ def add_source_args(parser: argparse.ArgumentParser):
     # extra args for SSH
     parser.add_argument("--ssh-key", help="SSH private key path for ssh source")
     parser.add_argument("--ssh-password", help="SSH password for ssh source")
+    parser.add_argument("--ssh-command", help="SSH command to run instead of cat <log_path>")
 
 
 def load_events(args: argparse.Namespace):
@@ -57,6 +61,7 @@ def load_events(args: argparse.Namespace):
             args.source_spec,
             password=args.ssh_password,
             key=args.ssh_key,
+            command=args.ssh_command,
             source_name=args.source_name,
         ).fetch()
 
@@ -136,13 +141,17 @@ def get_parser():
 
 
 def run():
+    configure_logging()
+    set_trace_id()
+
     parser = get_parser()
     args = parser.parse_args()
 
     try:
         match args.command:
             case "run":
-                Pipeline().run(is_analyze=not args.no_analyze)
+                with log_stage(logger, "cli.run", command="run"):
+                    Pipeline().run(is_analyze=not args.no_analyze)
 
             case "source":
                 events = load_events(args)
@@ -191,5 +200,7 @@ def run():
 
             case _:
                 parser.print_help()
-    except Exception:
+    except Exception as e:
+        logger.exception("fatal_error command=%s", args.command or "help")
+        print(f"error: {e}")
         raise SystemExit(1)
