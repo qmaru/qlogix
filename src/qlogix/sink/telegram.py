@@ -22,7 +22,11 @@ class TelegramSink(Sink):
 
     def __send_message(self, message: str):
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
-        payload = {"chat_id": self.chat_id, "text": message}
+        payload = {
+            "chat_id": self.chat_id,
+            "text": message,
+            "link_preview_options": {"is_disabled": True},
+        }
 
         try:
             response = log_external_call(
