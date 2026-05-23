@@ -1,3 +1,5 @@
+from functools import partial
+
 import httpx
 
 from qlogix.analyze.base import AnalyzeBaseContent
@@ -25,10 +27,7 @@ class TelegramSink(Sink):
             "text": message,
         }
         response = log_external_call(
-            logger,
-            "telegram.send_message",
-            lambda: httpx.post(url, json=payload),
-            sink="telegram",
+            logger, "telegram.send_message", partial(httpx.post, url, json=payload)
         )
         response.raise_for_status()
 

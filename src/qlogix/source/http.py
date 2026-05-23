@@ -1,4 +1,5 @@
 import json
+from functools import partial
 from typing import Any
 
 import httpx
@@ -27,11 +28,7 @@ class HTTPSource(Source):
     def fetch(self) -> list[SourceBaseContent]:
         with httpx.Client(timeout=30) as client:
             response = log_external_call(
-                logger,
-                "http.get",
-                lambda: client.get(self.url),
-                source=self.source_name,
-                url=self.url,
+                logger, "http.get", partial(client.get, self.url, timeout=30)
             )
             response.raise_for_status()
 

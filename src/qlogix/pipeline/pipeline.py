@@ -14,6 +14,8 @@ logger = get_logger(__name__)
 
 
 class Pipeline:
+    name = "pipeline"
+
     def __init__(self):
         self.sources = create_sources(get_source_config())
         self.filters = create_filters(get_filter_config())
@@ -24,38 +26,30 @@ class Pipeline:
     def run(self, is_analyze=True):
         events: list[SourceBaseContent] = []
 
-        with log_stage(logger, "sources", source_count=len(self.sources)):
-            for source in self.sources:
-                source_name = source.__class__.__name__
+        for source in self.sources:
+            with log_stage(logger, source.name):
                 try:
-                    with log_stage(logger, "source", source=source_name):
-                        events.extend(source.fetch())
+                    events.extend(source.fetch())
                 except Exception as exc:
                     logger.warning(
-                        "recoverable_failure stage=source source=%s error=%s",
-                        source_name,
+                        "init failed, source=%s error=%r",
+                        source.name,
                         exc,
                     )
-
-        with log_stage(logger, "filters", filter_count=len(self.filters), event_count=len(events)):
-            for filter_ in self.filters:
-                with log_stage(logger, "filter", filter=filter_.__class__.__name__):
-                    events = filter_.process(events)
+        for filter_ in self.filters:
+            with log_stage(logger, filter_.name):
+                events = filter_.process(events)
 
         if len(events) == 0:
             logger.info("no events to analyze or sink after filtering")
             return
 
-        analyzer_name = (
-            self.analyze_ai.__class__.__name__
-            if is_analyze
-            else self.analyze_passthrough.__class__.__name__
-        )
-        with log_stage(logger, "analyze", analyzer=analyzer_name, event_count=len(events)):
-            if is_analyze:
+        if is_analyze:
+            with log_stage(logger, self.analyze_ai.name):
                 content = self.analyze_ai.run(events)
-            else:
+        else:
+            with log_stage(logger, self.analyze_passthrough.name):
                 content = self.analyze_passthrough.run(events)
 
-        with log_stage(logger, "sinks", sink_count=len(self.sinks)):
+        with log_stage(logger, "sink"):
             Sink.run(self.sinks, content)

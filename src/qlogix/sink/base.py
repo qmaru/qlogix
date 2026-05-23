@@ -1,36 +1,38 @@
-import re
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from typing import ClassVar
 
 from qlogix.analyze.base import AnalyzeBaseContent
-from qlogix.logutil import get_logger
-
-
-def camel_to_snake(name: str):
-    name = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
-    name = re.sub(r"([a-z\d])([A-Z])", r"\1_\2", name)
-    return name.lower()
-
+from qlogix.logutil import get_logger, log_stage
+from qlogix.utils import camel_to_snake
 
 logger = get_logger(__name__)
 
 
 class Sink(ABC):
+    key: ClassVar[str] = ""
+    name: ClassVar[str] = ""
+
     _registry: dict[str, type["Sink"]] = {}
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        name = camel_to_snake(cls.__name__.removesuffix("Sink"))
-        cls._registry[name] = cls
+        if not cls.key:
+            cls.key = camel_to_snake(cls.__name__.removesuffix("Sink"))
+
+        if not cls.name:
+            cls.name = camel_to_snake(cls.__name__)
+
+        cls._registry[cls.key] = cls
 
     @classmethod
     def names(cls) -> list[str]:
         return list(cls._registry)
 
     @classmethod
-    def load(cls, name: str, **kwargs) -> "Sink":
-        return cls._registry[name](**kwargs)
+    def load(cls, key: str) -> "Sink":
+        return cls._registry[key]()
 
     @staticmethod
     def run(sinks: list["Sink"], content: AnalyzeBaseContent) -> None:
@@ -43,13 +45,10 @@ class Sink(ABC):
 
             for sink, future in zip(sinks, futures, strict=False):
                 try:
-                    future.result()
+                    with log_stage(logger, sink.name):
+                        future.result()
                 except Exception as exc:
-                    logger.warning(
-                        "recoverable_failure stage=sink sink=%s error=%s",
-                        sink.__class__.__name__,
-                        exc,
-                    )
+                    logger.warning("init failed, sink=%s error=%s", sink.name, exc)
                     failures.append(exc)
 
         if failures and len(failures) == len(sinks):

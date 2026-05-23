@@ -1,5 +1,6 @@
 import getpass
 import shlex
+from functools import partial
 from urllib.parse import urlparse
 
 import paramiko
@@ -79,13 +80,7 @@ class SSHSource(Source):
     def fetch(self) -> list[SourceBaseContent]:
         with self.__ssh_connect() as client:
             lines = log_external_call(
-                logger,
-                "ssh.exec_command",
-                lambda: self.__run_remote(client),
-                source=self.source_name,
-                host=self.ssh_config.host,
-                path=self.log_path,
-                command=self.command,
+                logger, "ssh.exec_command", partial(self.__run_remote, client)
             )
 
         return [

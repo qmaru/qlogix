@@ -1,4 +1,5 @@
 import json
+from functools import partial
 
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
@@ -44,9 +45,7 @@ class AiAnalyze(Analyze[AiContent]):
         result = log_external_call(
             logger,
             "ai.run_sync",
-            lambda: self.agent.run_sync(user_prompt=(f"Analyze the following logs:\n\n{logs}")),
-            analyzer=self.__class__.__name__,
-            event_count=len(events),
+            partial(self.agent.run_sync, user_prompt=f"Analyze the following logs:\n\n{logs}"),
         )
 
         return AiContent(result=result.output)

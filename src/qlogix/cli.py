@@ -150,8 +150,9 @@ def run():
     try:
         match args.command:
             case "run":
-                with log_stage(logger, "cli.run", command="run"):
-                    Pipeline().run(is_analyze=not args.no_analyze)
+                p = Pipeline()
+                with log_stage(logger, p.name):
+                    p.run(is_analyze=not args.no_analyze)
 
             case "source":
                 events = load_events(args)
