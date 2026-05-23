@@ -64,6 +64,7 @@ class SSHSourceConfig(BaseSource):
     url: str
     password: str | None = None
     private_key: str | None = None
+    command: str | None = None
 
     @model_validator(mode="after")
     def validate_auth(self):

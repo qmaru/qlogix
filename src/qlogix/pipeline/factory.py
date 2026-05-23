@@ -52,7 +52,9 @@ def create_sources(configs: list[SourceType]):
                     raise ValueError("SSH source requires either 'password' or 'private_key'")
 
                 sources.append(
-                    SSHSource(cfg.url, cfg.password, cfg.private_key, source_name=source_name)
+                    SSHSource(
+                        cfg.url, cfg.password, cfg.private_key, cfg.command, source_name=source_name
+                    )
                 )
 
             case "stdin":
