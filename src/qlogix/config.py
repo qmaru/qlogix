@@ -10,8 +10,25 @@ from pydantic import BaseModel, Field, model_validator
 # root dir
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
-# env var: QLOGIX_CONFIG, default to ROOT_DIR / "config.toml"
-CONFIG_PATH = Path(os.getenv("QLOGIX_CONFIG", ROOT_DIR / "config.toml"))
+CONFIG_NAME = "config.yaml"
+
+
+def find_config() -> Path | None:
+    candidates = []
+
+    if env := os.getenv("QLOGIX_CONFIG"):
+        candidates.append(Path(env))
+
+    candidates.append(Path.cwd() / CONFIG_NAME)
+    candidates.append(ROOT_DIR / CONFIG_NAME)
+
+    for path in candidates:
+        if path.is_file():
+            return path.resolve()
+
+    raise FileNotFoundError(
+        f"cannot find {CONFIG_NAME}, searched:\n" + "\n".join(f"  - {p}" for p in candidates)
+    )
 
 
 class SourceType(StrEnum):
@@ -183,10 +200,12 @@ class Config(BaseModel):
 
 @lru_cache()
 def __load_config() -> Config:
-    if not CONFIG_PATH.exists():
-        raise FileNotFoundError(f"Config not found: {CONFIG_PATH}")
+    config_path = find_config()
 
-    with CONFIG_PATH.open("rb") as f:
+    if not config_path:
+        raise FileNotFoundError(f"cannot find {CONFIG_NAME}")
+
+    with config_path.open("rb") as f:
         data = tomllib.load(f)
 
     return Config.model_validate(data)
