@@ -105,6 +105,16 @@ class FileSinkConfig(BaseModel):
         return str(Path(self.path).expanduser().resolve())
 
 
+class CacheSinkConfig(BaseModel):
+    type: Literal["cache"] = "cache"
+    dir: str
+    ttl_days: int
+
+    @property
+    def unique_key(self):
+        return str(Path(self.dir).expanduser().resolve())
+
+
 class StdoutSinkConfig(BaseModel):
     type: Literal["stdout"] = "stdout"
 
@@ -147,7 +157,7 @@ class TelegramSinkConfig(BaseModel):
 
 
 Sink = Annotated[
-    FileSinkConfig | StdoutSinkConfig | TelegramSinkConfig,
+    FileSinkConfig | CacheSinkConfig | StdoutSinkConfig | TelegramSinkConfig,
     Field(discriminator="type"),
 ]
 

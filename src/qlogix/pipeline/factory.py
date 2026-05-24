@@ -5,6 +5,7 @@ from qlogix.config import Sink as SinkType
 from qlogix.config import Source as SourceType
 from qlogix.filter.base import Filter
 from qlogix.sink.base import Sink
+from qlogix.sink.cache import CacheSink
 from qlogix.sink.file import FileSink
 from qlogix.sink.stdout import StdoutSink
 from qlogix.sink.telegram import TelegramSink
@@ -83,6 +84,10 @@ def create_sink(configs: list[SinkType]) -> list[Sink]:
             if not config.path:
                 raise ValueError("File sink requires 'path'")
             sinks.append(FileSink(config.path))
+        elif config.type == "cache":
+            if not config.dir:
+                raise ValueError("Cache sink requires 'dir'")
+            sinks.append(CacheSink(config.dir))
         elif config.type == "stdout":
             sinks.append(StdoutSink())
         elif config.type == "telegram":

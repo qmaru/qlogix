@@ -8,6 +8,7 @@ from qlogix.filter.base import Filter
 from qlogix.logutil import configure_logging, get_logger, log_stage, set_trace_id
 from qlogix.pipeline.pipeline import Pipeline
 from qlogix.sink.base import Sink
+from qlogix.sink.cache import CacheSink
 from qlogix.sink.file import FileSink
 from qlogix.sink.stdout import StdoutSink
 from qlogix.sink.telegram import TelegramSink
@@ -80,6 +81,11 @@ def write_events(content: AnalyzeBaseContent, args: argparse.Namespace):
 
     if args.sink_type == "stdout":
         StdoutSink().write(content)
+        return
+
+    if args.sink_type == "cache":
+        dir = args.sink_spec or "cache"
+        CacheSink(dir).write(content)
         return
 
     if args.sink_type == "file":
