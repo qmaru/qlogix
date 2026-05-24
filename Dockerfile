@@ -8,10 +8,13 @@ COPY src ./src
 RUN pip install \
     --no-cache-dir \
     --disable-pip-version-check \
+    --compile \
     --prefix=/runtime \
     .
 
-FROM gcr.io/distroless/python3-debian13
+FROM gcr.io/distroless/python3-debian13 AS prod
+
+WORKDIR /app
 
 ENV PYTHONPATH=/runtime/lib/python3.13/site-packages
 
