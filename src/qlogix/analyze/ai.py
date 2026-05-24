@@ -1,15 +1,6 @@
 import json
 from functools import partial
 
-import httpx
-from pydantic_ai import Agent
-from pydantic_ai.models.google import GoogleModel
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.google import GoogleProvider
-from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.retries import AsyncTenacityTransport, RetryConfig, wait_retry_after
-from tenacity import stop_after_attempt, wait_exponential
-
 from qlogix.analyze.base import Analyze, AnalyzeBaseContent
 from qlogix.config import get_analyze_config
 from qlogix.logutil import get_logger, log_external_call
@@ -24,6 +15,15 @@ class AiContent(AnalyzeBaseContent):
 
 class AiAnalyze(Analyze[AiContent]):
     def __init__(self):
+        import httpx
+        from pydantic_ai import Agent
+        from pydantic_ai.models.google import GoogleModel
+        from pydantic_ai.models.openai import OpenAIChatModel
+        from pydantic_ai.providers.google import GoogleProvider
+        from pydantic_ai.providers.openai import OpenAIProvider
+        from pydantic_ai.retries import AsyncTenacityTransport, RetryConfig, wait_retry_after
+        from tenacity import stop_after_attempt, wait_exponential
+
         cfg = get_analyze_config()
 
         retryConfig = RetryConfig(

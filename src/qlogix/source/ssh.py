@@ -3,7 +3,6 @@ import shlex
 from functools import partial
 from urllib.parse import urlparse
 
-import paramiko
 from pydantic import BaseModel, Field
 
 from qlogix.logutil import get_logger, log_external_call
@@ -37,6 +36,8 @@ class SSHSource(Source):
         self.source_name = source_name
 
     def __ssh_connect(self):
+        import paramiko
+
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         if self.ssh_config.private_key:
