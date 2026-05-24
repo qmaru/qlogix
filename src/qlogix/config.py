@@ -117,6 +117,7 @@ class TelegramSinkConfig(BaseModel):
     type: Literal["telegram"] = "telegram"
     token: str | None = None  # QLOGIX_TELEGRAM_TOKEN
     chat_id: str | None = None  # QLOGIX_TELEGRAM_CHAT_ID
+    title: str | None = None  # Optional title for the sink
 
     @model_validator(mode="before")
     @classmethod
@@ -126,18 +127,19 @@ class TelegramSinkConfig(BaseModel):
         data["token"] = data.get("token") or os.getenv("QLOGIX_TELEGRAM_TOKEN")
         data["chat_id"] = data.get("chat_id") or os.getenv("QLOGIX_TELEGRAM_CHAT_ID")
 
+        return data
+
+    def validate_required(self):
         missing = []
 
-        if not data["token"]:
+        if not self.token:
             missing.append("QLOGIX_TELEGRAM_TOKEN")
 
-        if not data["chat_id"]:
+        if not self.chat_id:
             missing.append("QLOGIX_TELEGRAM_CHAT_ID")
 
         if missing:
             raise ValueError(f"missing: {', '.join(missing)}")
-
-        return data
 
     @property
     def unique_key(self) -> str:
@@ -151,10 +153,10 @@ Sink = Annotated[
 
 
 class Config(BaseModel):
-    source: list[Source]
+    source: list[Source] = Field(default_factory=list)
     filter: Filter
     analyze: Analyze
-    sink: list[Sink]
+    sink: list[Sink] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_sink(self):
@@ -193,4 +195,9 @@ def get_analyze_config() -> Analyze:
 
 
 def get_sink_config() -> list[Sink]:
-    return __load_config().sink
+    config = __load_config()
+
+    if config.sink is None:
+        return []
+
+    return config.sink

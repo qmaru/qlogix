@@ -1,3 +1,4 @@
+from datetime import datetime
 from functools import partial
 
 import httpx
@@ -15,10 +16,12 @@ class TelegramSink(Sink):
         if config is None:
             config = next((x for x in get_sink_config() if x.type == "telegram"), None)
             if config is None:
-                raise ValueError("Telegram sink config not found")
+                config = TelegramSinkConfig()
 
+        config.validate_required()
         self.token = config.token
         self.chat_id = config.chat_id
+        self.title = config.title
 
     def __send_message(self, message: str):
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
@@ -39,4 +42,9 @@ class TelegramSink(Sink):
 
     def write(self, content: AnalyzeBaseContent):
         message = content.result
+
+        if self.title:
+            today = datetime.now().strftime("%Y-%m-%d")
+            message = f"{today} - {self.title}\n\n{message}"
+
         self.__send_message(message)
