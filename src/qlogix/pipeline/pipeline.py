@@ -19,23 +19,26 @@ class Pipeline:
     def __init__(self):
         self.sources = create_sources(get_source_config())
         self.filters = create_filters(get_filter_config())
-        self.analyze_ai = create_ai_analyze()
+        self.analyze_ai = None
         self.analyze_passthrough = create_passthrough_analyze()
         self.sinks = create_sink(get_sink_config())
 
-    def run(self, is_analyze=True):
+    def _get_ai_analyze(self):
+        if self.analyze_ai is None:
+            self.analyze_ai = create_ai_analyze()
+        return self.analyze_ai
+
+    def run(self, enable_ai_analyze=True):
         events: list[SourceBaseContent] = []
 
         for source in self.sources:
             with log_stage(logger, source.name):
                 try:
-                    events.extend(source.fetch())
+                    with log_stage(logger, source.name):
+                        source_events = source.fetch()
+                    events.extend(source_events)
                 except Exception as exc:
-                    logger.warning(
-                        "init failed, source=%s error=%r",
-                        source.name,
-                        exc,
-                    )
+                    logger.warning("source failed, source=%s error=%r", source.name, exc)
         for filter_ in self.filters:
             with log_stage(logger, filter_.name):
                 events = filter_.process(events)
@@ -44,9 +47,10 @@ class Pipeline:
             logger.info("no events to analyze or sink after filtering")
             return
 
-        if is_analyze:
-            with log_stage(logger, self.analyze_ai.name):
-                content = self.analyze_ai.run(events)
+        if enable_ai_analyze:
+            analyzer = self._get_ai_analyze()
+            with log_stage(logger, analyzer.name):
+                content = analyzer.run(events)
         else:
             with log_stage(logger, self.analyze_passthrough.name):
                 content = self.analyze_passthrough.run(events)
