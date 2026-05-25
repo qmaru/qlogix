@@ -32,13 +32,12 @@ class Pipeline:
         events: list[SourceBaseContent] = []
 
         for source in self.sources:
-            with log_stage(logger, source.name):
-                try:
-                    with log_stage(logger, source.name):
-                        source_events = source.fetch()
-                    events.extend(source_events)
-                except Exception as exc:
-                    logger.warning("source failed, source=%s error=%r", source.name, exc)
+            try:
+                with log_stage(logger, source.name):
+                    source_events = source.fetch()
+                events.extend(source_events)
+            except Exception as exc:
+                logger.warning("source failed, source=%s error=%r", source.name, exc)
         for filter_ in self.filters:
             with log_stage(logger, filter_.name):
                 events = filter_.process(events)
