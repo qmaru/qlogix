@@ -38,12 +38,17 @@ class Pipeline:
                 events.extend(source_events)
             except Exception as exc:
                 logger.warning("source failed, source=%s error=%r", source.name, exc)
+
+        if len(events) == 0:
+            logger.info("no events fetched from any source")
+            return
+
         for filter_ in self.filters:
             with log_stage(logger, filter_.name):
                 events = filter_.process(events)
 
         if len(events) == 0:
-            logger.info("no events to analyze or sink after filtering")
+            logger.info("all events filtered out before analyze")
             return
 
         if enable_ai_analyze:
