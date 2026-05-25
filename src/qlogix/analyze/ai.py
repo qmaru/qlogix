@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from functools import partial
 
 from qlogix.analyze.base import Analyze, AnalyzeBaseContent
@@ -57,8 +58,19 @@ class AiAnalyze(Analyze[AiContent]):
         self.agent = Agent(model, system_prompt=cfg.system_prompt)
 
     def run(self, events: list[SourceBaseContent]) -> AiContent:
+        source_counts = Counter(event.source_name or "unknown" for event in events)
+        metadata = {
+            "total_events": len(events),
+            "source_count": len(source_counts),
+            "source_event_counts": dict(source_counts),
+            "logs_are_filtered": True,
+        }
         logs = json.dumps([event.model_dump() for event in events], ensure_ascii=False)
-        prompt = f"Analyze the following logs:\n\n{logs}"
+        prompt = (
+            "Analyze the following logs.\n\n"
+            f"Metadata:\n{json.dumps(metadata, ensure_ascii=False)}\n\n"
+            f"Logs:\n{logs}"
+        )
         try:
             result = log_external_call(
                 logger, "ai.run_sync", partial(self.agent.run_sync, user_prompt=prompt)

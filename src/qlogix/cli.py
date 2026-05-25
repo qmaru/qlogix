@@ -106,8 +106,11 @@ def get_parser():
     sub = parser.add_subparsers(dest="command")
 
     run_parser = sub.add_parser("run", help="Run the default pipeline")
+    run_parser.add_argument("--no_ai", action="store_true", help="Run pipeline without AI analyze")
     run_parser.add_argument(
-        "--no_ai", action="store_true", help="Run pipeline without AI analyze"
+        "--preview",
+        action="store_true",
+        help="Run sources and filters, then stop before analyze and sink",
     )
 
     source_parser = sub.add_parser("source", help="Fetch events from a source")
@@ -158,7 +161,7 @@ def run():
             case "run":
                 p = Pipeline()
                 with log_stage(logger, p.name):
-                    p.run(enable_ai_analyze=not args.no_ai)
+                    p.run(enable_ai_analyze=not args.no_ai, preview=args.preview)
 
             case "source":
                 events = load_events(args)
