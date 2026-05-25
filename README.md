@@ -1,5 +1,9 @@
 # qlogix
 
+easy log fetch.
+
+`source -> filter - analyze - sink`
+
 ## Installation
 
 ```bash
@@ -38,4 +42,11 @@ docker run --rm \
     -e QLOGIX_CONFIG=/app/config.toml \
     -v ./config.toml:/app/config.toml:ro \
     ghcr.io/qmaru/qlogix run
+
+# compose
+# local
+docker compose run --build --rm qlogix -h
+
+# remote
+docker compose run --rm qlogix -h
 ```

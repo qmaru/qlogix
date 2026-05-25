@@ -3,6 +3,13 @@ name: Python
 on:
   push:
     branches: [main]
+    paths:
+      - "src/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 jobs:
