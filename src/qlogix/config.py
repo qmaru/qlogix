@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 # root dir
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
-CONFIG_NAME = "config.yaml"
+CONFIG_NAME = "config.toml"
 
 
 def find_config() -> Path | None:
