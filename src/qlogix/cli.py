@@ -211,6 +211,5 @@ def run():
             case _:
                 parser.print_help()
     except Exception as e:
-        logger.exception("fatal_error command=%s", args.command or "help")
         print(f"error: {e}")
         raise SystemExit(1)

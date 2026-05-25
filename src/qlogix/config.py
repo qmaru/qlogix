@@ -3,9 +3,9 @@ import tomllib
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 # root dir
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -41,6 +41,7 @@ class SourceType(StrEnum):
 
 class SinkType(StrEnum):
     FILE = "file"
+    CACHE = "cache"
     STDOUT = "stdout"
     TELEGRAM = "telegram"
 
@@ -86,7 +87,7 @@ class SSHSourceConfig(BaseSource):
     @model_validator(mode="after")
     def validate_auth(self):
         if not self.password and not self.private_key:
-            raise ValueError("must provide password or private_key")
+            raise ValueError("requires password or private_key")
 
         return self
 
@@ -102,7 +103,7 @@ Source = Annotated[
 
 
 class Filter(BaseModel):
-    plugins: list[str] = []
+    plugins: list[str]
 
 
 class Analyze(BaseModel):
@@ -111,6 +112,38 @@ class Analyze(BaseModel):
     api_key: str | None = None
     base_url: str | None = None
     system_prompt: str = "Analyze logs and provide concise insights."
+
+    @model_validator(mode="before")
+    @classmethod
+    def load_env(cls, data: dict[str, Any] | None):
+        data = dict(data or {})
+        provider = data.get("provider")
+
+        if provider == AnalyzeProvider.OPENAI or provider == AnalyzeProvider.OPENAI.value:
+            data["api_key"] = (
+                data.get("api_key")
+                or os.getenv("QLOGIX_OPENAI_API_KEY")
+                or os.getenv("OPENAI_API_KEY")
+            )
+            data["base_url"] = data.get("base_url") or os.getenv("QLOGIX_OPENAI_BASE_URL")
+        elif provider == AnalyzeProvider.GOOGLE or provider == AnalyzeProvider.GOOGLE.value:
+            data["api_key"] = (
+                data.get("api_key")
+                or os.getenv("QLOGIX_GOOGLE_API_KEY")
+                or os.getenv("GOOGLE_API_KEY")
+            )
+
+        return data
+
+    @model_validator(mode="after")
+    def validate_required(self):
+        if self.provider == AnalyzeProvider.GOOGLE and not self.api_key:
+            raise ValueError("requires api_key or env QLOGIX_GOOGLE_API_KEY/GOOGLE_API_KEY")
+
+        if self.provider == AnalyzeProvider.OPENAI and not self.api_key:
+            raise ValueError("requires api_key or env QLOGIX_OPENAI_API_KEY/OPENAI_API_KEY")
+
+        return self
 
 
 class FileSinkConfig(BaseModel):
@@ -156,17 +189,22 @@ class TelegramSinkConfig(BaseModel):
 
         return data
 
+    @model_validator(mode="after")
+    def validate_model(self):
+        self.validate_required()
+        return self
+
     def validate_required(self):
         missing = []
 
         if not self.token:
-            missing.append("QLOGIX_TELEGRAM_TOKEN")
+            missing.append("token or env QLOGIX_TELEGRAM_TOKEN")
 
         if not self.chat_id:
-            missing.append("QLOGIX_TELEGRAM_CHAT_ID")
+            missing.append("chat_id or env QLOGIX_TELEGRAM_CHAT_ID")
 
         if missing:
-            raise ValueError(f"missing: {', '.join(missing)}")
+            raise ValueError("requires " + ", ".join(missing))
 
     @property
     def unique_key(self) -> str:
@@ -180,13 +218,19 @@ Sink = Annotated[
 
 
 class Config(BaseModel):
-    source: list[Source] = Field(default_factory=list)
+    source: list[Source]
     filter: Filter
-    analyze: Analyze
-    sink: list[Sink] = Field(default_factory=list)
+    analyze: Analyze | None = None
+    sink: list[Sink]
 
     @model_validator(mode="after")
-    def validate_sink(self):
+    def validate_config(self):
+        if not self.source:
+            raise ValueError("at least one source entry is required")
+
+        if not self.sink:
+            raise ValueError("at least one sink entry is required")
+
         seen: set[str] = set()
 
         for sink in self.sink:
@@ -198,33 +242,67 @@ class Config(BaseModel):
         return self
 
 
-@lru_cache()
-def __load_config() -> Config:
-    config_path = find_config()
+class ConfigLoadError(ValueError):
+    pass
 
+
+@lru_cache()
+def _load_config() -> Config:
+    config_path = find_config()
     if not config_path:
-        raise FileNotFoundError(f"cannot find {CONFIG_NAME}")
+        raise FileNotFoundError(f"cannot find config file: {CONFIG_NAME}")
 
     with config_path.open("rb") as f:
         data = tomllib.load(f)
 
-    return Config.model_validate(data)
+    try:
+        return Config.model_validate(data)
+    except ValidationError as exc:
+        lines = [f"invalid config: {config_path}"]
+
+        for item in exc.errors(include_url=False):
+            parts: list[str] = []
+            for loc in item["loc"]:
+                if isinstance(loc, int):
+                    if parts:
+                        parts[-1] = f"{parts[-1]}[{loc}]"
+                    else:
+                        parts.append(f"[{loc}]")
+                else:
+                    parts.append(str(loc))
+
+            msg = str(item["msg"])
+            if msg.startswith("Value error, "):
+                msg = msg.removeprefix("Value error, ")
+            elif msg == "Field required":
+                msg = "is required"
+
+            lines.append(f"- {'.'.join(parts) if parts else '<root>'}: {msg}")
+
+        raise ConfigLoadError("\n".join(lines)) from None
 
 
 def get_source_config() -> list[Source]:
-    return __load_config().source
+    return _load_config().source
 
 
 def get_filter_config() -> Filter:
-    return __load_config().filter
+    return _load_config().filter
 
 
 def get_analyze_config() -> Analyze:
-    return __load_config().analyze
+    config = _load_config()
+
+    if config.analyze is None:
+        raise ConfigLoadError(
+            "missing analyze config: add analyze section or run qlogix-cli run --no_ai"
+        )
+
+    return config.analyze
 
 
 def get_sink_config() -> list[Sink]:
-    config = __load_config()
+    config = _load_config()
 
     if config.sink is None:
         return []
