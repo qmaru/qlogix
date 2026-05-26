@@ -18,9 +18,7 @@ class AiAnalyze(Analyze[AiContent]):
     def __init__(self):
         import httpx
         from pydantic_ai import Agent
-        from pydantic_ai.models.google import GoogleModel
         from pydantic_ai.models.openai import OpenAIChatModel
-        from pydantic_ai.providers.google import GoogleProvider
         from pydantic_ai.providers.openai import OpenAIProvider
         from pydantic_ai.retries import AsyncTenacityTransport, RetryConfig, wait_retry_after
         from tenacity import stop_after_attempt, wait_exponential
@@ -38,22 +36,16 @@ class AiAnalyze(Analyze[AiContent]):
             transport=AsyncTenacityTransport(config=retryConfig),
         )
 
-        if cfg.provider == "openai":
-            if not cfg.api_key:
-                provider = OpenAIProvider(base_url=cfg.base_url, http_client=http_client)
-            else:
-                provider = OpenAIProvider(
-                    base_url=cfg.base_url, api_key=cfg.api_key, http_client=http_client
-                )
-
-            model = OpenAIChatModel(cfg.model, provider=provider)
-
-        elif cfg.provider == "google":
-            provider = GoogleProvider(api_key=cfg.api_key, http_client=http_client)
-            model = GoogleModel(cfg.model, provider=provider)
-
+        if not cfg.api_key:
+            provider = OpenAIProvider(base_url=cfg.base_url, http_client=http_client)
         else:
-            raise ValueError(f"Unsupported provider: {cfg.provider}")
+            provider = OpenAIProvider(
+                base_url=cfg.base_url, api_key=cfg.api_key, http_client=http_client
+            )
+
+        model = OpenAIChatModel(
+            cfg.model, provider=provider, settings={"thinking": cfg.thinking_level}
+        )
 
         self.agent = Agent(model, system_prompt=cfg.system_prompt)
 

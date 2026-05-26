@@ -54,7 +54,6 @@ class ShellType(StrEnum):
 
 class AnalyzeProvider(StrEnum):
     OPENAI = "openai"
-    GOOGLE = "google"
 
 
 class BaseSource(BaseModel):
@@ -111,6 +110,7 @@ class Analyze(BaseModel):
     model: str
     api_key: str | None = None
     base_url: str | None = None
+    thinking_level: Literal["minimal", "low", "medium", "high"] = "medium"
     system_prompt: str = "Analyze logs and provide concise insights."
 
     @model_validator(mode="before")
@@ -126,20 +126,11 @@ class Analyze(BaseModel):
                 or os.getenv("OPENAI_API_KEY")
             )
             data["base_url"] = data.get("base_url") or os.getenv("QLOGIX_OPENAI_BASE_URL")
-        elif provider == AnalyzeProvider.GOOGLE or provider == AnalyzeProvider.GOOGLE.value:
-            data["api_key"] = (
-                data.get("api_key")
-                or os.getenv("QLOGIX_GOOGLE_API_KEY")
-                or os.getenv("GOOGLE_API_KEY")
-            )
 
         return data
 
     @model_validator(mode="after")
     def validate_required(self):
-        if self.provider == AnalyzeProvider.GOOGLE and not self.api_key:
-            raise ValueError("requires api_key or env QLOGIX_GOOGLE_API_KEY/GOOGLE_API_KEY")
-
         if self.provider == AnalyzeProvider.OPENAI and not self.api_key:
             raise ValueError("requires api_key or env QLOGIX_OPENAI_API_KEY/OPENAI_API_KEY")
 

@@ -37,6 +37,7 @@ chat_id = ""
 [analyze]
 provider = "openai"
 model = "gpt-5"
+thinking_level = "medium"
 base_url = "https://api.openai.com/v1"
 api_key = ""
 system_prompt = """
