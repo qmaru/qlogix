@@ -1,15 +1,13 @@
-import os
 import re
 from datetime import datetime
 
+from qlogix.config import Env
 from qlogix.filter.base import Filter, FilterType
 from qlogix.source.base import SourceBaseContent
 
 
 class TodayFilter(Filter):
     stage = FilterType.SELECT
-
-    ENV_NAME = "QLOGIX_FILTER_DATE"
 
     _datetime_patterns: list[tuple[str, str]] = [
         # ISO
@@ -33,7 +31,7 @@ class TodayFilter(Filter):
     _timestamp_pattern = r"\b\d{10,13}\b"
 
     def _get_target_date(self):
-        value = os.getenv(self.ENV_NAME)
+        value = Env.QLOGIX_FILTER_DATE
 
         if not value:
             return datetime.now().date()
@@ -42,7 +40,7 @@ class TodayFilter(Filter):
             return datetime.strptime(value, "%Y-%m-%d").date()
 
         except ValueError:
-            raise ValueError(f"{self.ENV_NAME} must be YYYY-MM-DD")
+            raise ValueError(f"{Env.key('QLOGIX_FILTER_DATE')} must be YYYY-MM-DD")
 
     def process(self, events: list[SourceBaseContent]) -> list[SourceBaseContent]:
         today = self._get_target_date()

@@ -13,11 +13,32 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 CONFIG_NAME = "config.toml"
 
 
+class Env(BaseModel):
+    # main config
+    QLOGIX_CONFIG: str | None = None
+    # override
+    QLOGIX_OPENAI_API_KEY: str | None = None
+    QLOGIX_OPENAI_BASE_URL: str | None = None
+    QLOGIX_TELEGRAM_TOKEN: str | None = None
+    QLOGIX_TELEGRAM_CHAT_ID: str | None = None
+    QLOGIX_FILTER_DATE: str | None = None  # YYYY-MM-DD, for today filter plugin
+    # compatibility
+    OPENAI_BASE_URL: str | None = None
+    OPENAI_API_KEY: str | None = None
+
+    @classmethod
+    def key(cls, name: str) -> str:
+        return cls.model_fields[name].alias or name
+
+
+env = Env.model_validate(os.environ)
+
+
 def find_config() -> Path | None:
     candidates = []
 
-    if env := os.getenv("QLOGIX_CONFIG"):
-        candidates.append(Path(env))
+    if env.QLOGIX_CONFIG:
+        candidates.append(Path(env.QLOGIX_CONFIG))
 
     candidates.append(Path.cwd() / CONFIG_NAME)
     candidates.append(ROOT_DIR / CONFIG_NAME)
@@ -119,21 +140,17 @@ class Analyze(BaseModel):
         data = dict(data or {})
         provider = data.get("provider")
 
-        if provider == AnalyzeProvider.OPENAI or provider == AnalyzeProvider.OPENAI.value:
-            data["api_key"] = (
-                data.get("api_key")
-                or os.getenv("QLOGIX_OPENAI_API_KEY")
-                or os.getenv("OPENAI_API_KEY")
+        provider = AnalyzeProvider(provider)
+        if provider == AnalyzeProvider.OPENAI:
+            data["api_key"] = data.get("api_key") or env.QLOGIX_OPENAI_API_KEY or env.OPENAI_API_KEY
+            data["base_url"] = (
+                data.get("base_url") or env.QLOGIX_OPENAI_BASE_URL or env.OPENAI_BASE_URL
             )
-            data["base_url"] = data.get("base_url") or os.getenv("QLOGIX_OPENAI_BASE_URL")
 
         return data
 
     @model_validator(mode="after")
     def validate_required(self):
-        if self.provider == AnalyzeProvider.OPENAI and not self.api_key:
-            raise ValueError("requires api_key or env QLOGIX_OPENAI_API_KEY/OPENAI_API_KEY")
-
         return self
 
 
@@ -175,8 +192,8 @@ class TelegramSinkConfig(BaseModel):
     def load_env(cls, data: dict | None):
         data = data or {}
 
-        data["token"] = data.get("token") or os.getenv("QLOGIX_TELEGRAM_TOKEN")
-        data["chat_id"] = data.get("chat_id") or os.getenv("QLOGIX_TELEGRAM_CHAT_ID")
+        data["token"] = data.get("token") or Env.QLOGIX_TELEGRAM_TOKEN
+        data["chat_id"] = data.get("chat_id") or Env.QLOGIX_TELEGRAM_CHAT_ID
 
         return data
 
