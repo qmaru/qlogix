@@ -1,6 +1,6 @@
 [project]
 name = "qlogix"
-version = "1.0.2"
+version = "1.0.3"
 description = "qlogix is an AI-powered platform for collecting, analyzing, and visualizing logs from multiple sources."
 readme = "README.md"
 requires-python = ">=3.13"

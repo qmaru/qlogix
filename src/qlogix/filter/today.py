@@ -4,6 +4,7 @@ from datetime import datetime
 from qlogix.config import env
 from qlogix.filter.base import Filter, FilterType
 from qlogix.source.base import SourceBaseContent
+from qlogix.utils import get_current_date
 
 
 class TodayFilter(Filter):
@@ -43,14 +44,14 @@ class TodayFilter(Filter):
             raise ValueError(f"{env.key('QLOGIX_FILTER_DATE')} must be YYYY-MM-DD")
 
     def process(self, events: list[SourceBaseContent]) -> list[SourceBaseContent]:
-        today = self._get_target_date()
+        current = get_current_date()
 
         result: list[SourceBaseContent] = []
 
         for event in events:
             dt = self._extract_datetime(str(event.message))
 
-            if dt and dt.date() == today:
+            if dt and dt.date() == current.date():
                 result.append(event)
 
         return result

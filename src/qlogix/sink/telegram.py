@@ -1,4 +1,3 @@
-from datetime import datetime
 from functools import partial
 
 import httpx
@@ -7,6 +6,7 @@ from qlogix.analyze.base import AnalyzeBaseContent
 from qlogix.config import TelegramSinkConfig, get_sink_config
 from qlogix.logutil import get_logger, log_external_call
 from qlogix.sink.base import Sink
+from qlogix.utils import DateFormat, get_current_date
 
 logger = get_logger(__name__)
 
@@ -44,7 +44,7 @@ class TelegramSink(Sink):
         message = content.result
 
         if self.title:
-            today = datetime.now().strftime("%Y-%m-%d")
+            today = get_current_date().strftime(DateFormat.REPORT)
             message = f"{today} - {self.title}\n\n{message}"
 
         self.__send_message(message)
