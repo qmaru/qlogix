@@ -192,8 +192,8 @@ class TelegramSinkConfig(BaseModel):
     def load_env(cls, data: dict | None):
         data = data or {}
 
-        data["token"] = data.get("token") or Env.QLOGIX_TELEGRAM_TOKEN
-        data["chat_id"] = data.get("chat_id") or Env.QLOGIX_TELEGRAM_CHAT_ID
+        data["token"] = data.get("token") or env.QLOGIX_TELEGRAM_TOKEN
+        data["chat_id"] = data.get("chat_id") or env.QLOGIX_TELEGRAM_CHAT_ID
 
         return data
 
