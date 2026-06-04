@@ -1,5 +1,6 @@
 import argparse
 
+from qlogix import FULL_VERSION
 from qlogix.analyze import ANALYZE_REGISTRY
 from qlogix.analyze.base import AnalyzeBaseContent
 from qlogix.analyze.passthrough import PassthroughAnalyze
@@ -105,6 +106,9 @@ def get_parser():
 
     sub = parser.add_subparsers(dest="command")
 
+    version_parser = sub.add_parser("version", help="Show version and exit")
+    version_parser.set_defaults(func=lambda args: print(f"qlogix version {FULL_VERSION}"))
+
     run_parser = sub.add_parser("run", help="Run the default pipeline")
     run_parser.add_argument("--no_ai", action="store_true", help="Run pipeline without AI analyze")
     run_parser.add_argument(
@@ -158,6 +162,9 @@ def run():
 
     try:
         match args.command:
+            case "version":
+                args.func(args)
+
             case "run":
                 p = Pipeline()
                 with log_stage(logger, p.name):

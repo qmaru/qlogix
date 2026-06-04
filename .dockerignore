@@ -36,4 +36,3 @@ config.toml
 
 # Local compose
 **/.DS_Store
-compose.yaml
