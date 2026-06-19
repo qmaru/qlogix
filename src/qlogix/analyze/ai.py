@@ -17,23 +17,49 @@ class AiContent(AnalyzeBaseContent):
 class AiAnalyze(Analyze[AiContent]):
     def __init__(self):
         import httpx
+        from httpx import HTTPStatusError
         from pydantic_ai import Agent
         from pydantic_ai.models.openai import OpenAIChatModel
         from pydantic_ai.providers.openai import OpenAIProvider
         from pydantic_ai.retries import AsyncTenacityTransport, RetryConfig, wait_retry_after
-        from tenacity import stop_after_attempt, wait_exponential
+        from tenacity import retry_if_exception_type, stop_after_delay, wait_exponential
 
         cfg = get_analyze_config()
 
-        retryConfig = RetryConfig(
-            stop=stop_after_attempt(3),
-            wait=wait_retry_after(fallback_strategy=wait_exponential(multiplier=1, min=1, max=10)),
+        retry_config = RetryConfig(
+            retry=retry_if_exception_type(
+                (
+                    HTTPStatusError,
+                    httpx.TimeoutException,
+                    httpx.ConnectError,
+                    httpx.ReadError,
+                    httpx.RemoteProtocolError,
+                    httpx.NetworkError,
+                )
+            ),
+            wait=wait_retry_after(
+                fallback_strategy=wait_exponential(multiplier=2, min=5, max=300),
+                max_wait=1800,
+            ),
+            stop=stop_after_delay(3600),
             reraise=True,
         )
 
+        limits = httpx.Limits(
+            max_connections=20,
+            max_keepalive_connections=10,
+            keepalive_expiry=30,
+        )
+
+        timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
+
         http_client = httpx.AsyncClient(
-            timeout=300,
-            transport=AsyncTenacityTransport(config=retryConfig),
+            timeout=timeout,
+            limits=limits,
+            transport=AsyncTenacityTransport(
+                config=retry_config,
+                validate_response=lambda r: r.raise_for_status(),
+            ),
         )
 
         if not cfg.api_key:
