@@ -1,6 +1,7 @@
 import re
 from collections.abc import Callable
-from typing import Match
+from re import Match
+from typing import ClassVar
 
 from qlogix.filter.base import Filter, FilterType
 from qlogix.source.base import SourceBaseContent
@@ -66,14 +67,14 @@ class SafeFilter(Filter):
 
         return f"{prefix}{masked}{suffix}"
 
-    RULES: list[tuple[re.Pattern[str], Replacement]] = [
+    RULES: ClassVar[list[tuple[re.Pattern[str], Replacement]]] = [
         # email
         (
             re.compile(
                 r'("?(?:email)"?\s*[:=]\s*"?)'
                 r"([\w\.-]+@[\w\.-]+\.\w+)"
                 r'("?)',
-                re.I,
+                re.IGNORECASE,
             ),
             _mask_email.__func__,
         ),
@@ -83,7 +84,7 @@ class SafeFilter(Filter):
                 r'("?(?:phone|mobile|tel)"?\s*[:=]\s*"?)'
                 r"((?:86[- ]?)?1[3-9]\d{9})"
                 r'("?)',
-                re.I,
+                re.IGNORECASE,
             ),
             _mask_phone.__func__,
         ),
@@ -93,7 +94,7 @@ class SafeFilter(Filter):
                 r"""(['"]?(?:ip|origin|client_ip|remote_ip)['"]?\s*[:=]\s*['"]?)"""
                 r"""((?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3})"""
                 r"""(['"]?)""",
-                re.I,
+                re.IGNORECASE,
             ),
             _mask_ip.__func__,
         ),
@@ -103,7 +104,7 @@ class SafeFilter(Filter):
                 r'("?(?:userId|user_id)"?\s*[:=]\s*"?)'
                 r"([A-Za-z0-9_-]+)"
                 r'("?)',
-                re.I,
+                re.IGNORECASE,
             ),
             _mask_user_id.__func__,
         ),
@@ -114,7 +115,7 @@ class SafeFilter(Filter):
                 r'\s*[:=]\s*"?)'
                 r'([^\s",}]+)'
                 r'("?)',
-                re.I,
+                re.IGNORECASE,
             ),
             r"\1<SECRET>\3",
         ),

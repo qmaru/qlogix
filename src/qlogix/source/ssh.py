@@ -65,7 +65,7 @@ class SSHSource(Source):
 
     def __run_remote(self, client) -> list[str]:
         cmd = self.command or f"cat {shlex.quote(self.log_path)}"
-        stdin, stdout, stderr = client.exec_command(cmd)
+        _stdin, stdout, stderr = client.exec_command(cmd)
 
         exit_code = stdout.channel.recv_exit_status()
         out = stdout.read().decode("utf-8", errors="replace")

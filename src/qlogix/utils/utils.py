@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 
 from qlogix.config import env
 
@@ -11,12 +11,12 @@ def camel_to_snake(name: str):
 
 
 def get_current_date() -> datetime:
-    now = datetime.now()
+    now = datetime.now(UTC)
 
     env_date = env.QLOGIX_FILTER_DATE
     if env_date:
         try:
-            override = datetime.strptime(env_date, "%Y-%m-%d")
+            override = datetime.strptime(env_date, "%Y-%m-%d").replace(tzinfo=UTC)
             now = now.replace(year=override.year, month=override.month, day=override.day)
         except ValueError:
             raise ValueError(

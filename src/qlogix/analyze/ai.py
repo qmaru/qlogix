@@ -16,12 +16,16 @@ class AiContent(AnalyzeBaseContent):
 
 class AiAnalyze(Analyze[AiContent]):
     def __init__(self):
-        import httpx
-        from httpx import HTTPStatusError
+        import httpx2 as httpx
+        from httpx2 import HTTPStatusError
         from pydantic_ai import Agent
         from pydantic_ai.models.openai import OpenAIChatModel
         from pydantic_ai.providers.openai import OpenAIProvider
-        from pydantic_ai.retries import AsyncTenacityTransport, RetryConfig, wait_retry_after
+        from pydantic_ai.retries import (
+            AsyncHTTPX2TenacityTransport,
+            RetryConfig,
+            wait_retry_after,
+        )
         from tenacity import retry_if_exception_type, stop_after_delay, wait_exponential
 
         cfg = get_analyze_config()
@@ -56,7 +60,7 @@ class AiAnalyze(Analyze[AiContent]):
         http_client = httpx.AsyncClient(
             timeout=timeout,
             limits=limits,
-            transport=AsyncTenacityTransport(
+            transport=AsyncHTTPX2TenacityTransport(
                 config=retry_config,
                 validate_response=lambda r: r.raise_for_status(),
             ),
@@ -96,5 +100,5 @@ class AiAnalyze(Analyze[AiContent]):
 
             return AiContent(result=result.output)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             raise RuntimeError(f"AI request failed: {e}") from None

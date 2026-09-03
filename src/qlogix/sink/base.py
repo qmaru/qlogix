@@ -13,7 +13,7 @@ class Sink(ABC):
     key: ClassVar[str] = ""
     name: ClassVar[str] = ""
 
-    _registry: dict[str, type["Sink"]] = {}
+    _registry: ClassVar[dict[str, type["Sink"]]] = {}
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -47,7 +47,7 @@ class Sink(ABC):
                 try:
                     with log_stage(logger, sink.name):
                         future.result()
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     logger.warning("sink failed: %s: %s", sink.name, exc)
                     failures.append((sink.name, exc))
 

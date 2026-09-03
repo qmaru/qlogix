@@ -9,6 +9,6 @@ VERSION = version("qlogix")
 FULL_VERSION = f"{VERSION}+{__commit__}" if __commit__ else VERSION
 
 __all__ = [
-    "VERSION",
     "FULL_VERSION",
+    "VERSION",
 ]

@@ -18,7 +18,7 @@ class Filter:
     key: ClassVar[str] = ""
     name: ClassVar[str] = ""
 
-    _registry: dict[str, type["Filter"]] = {}
+    _registry: ClassVar[dict[str, type["Filter"]]] = {}
 
     stage = FilterType.NONE
 

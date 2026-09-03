@@ -217,6 +217,6 @@ def run():
 
             case _:
                 parser.print_help()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"error: {e}")
         raise SystemExit(1)

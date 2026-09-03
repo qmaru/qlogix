@@ -1,7 +1,7 @@
 import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Iterator
 from uuid import uuid4
 
 trace_id_var: ContextVar[str] = ContextVar("trace_id", default="-")

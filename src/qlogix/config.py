@@ -254,7 +254,7 @@ class ConfigLoadError(ValueError):
     pass
 
 
-@lru_cache()
+@lru_cache
 def _load_config() -> Config:
     config_path = find_config()
     if not config_path:

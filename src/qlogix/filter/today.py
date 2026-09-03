@@ -1,5 +1,6 @@
 import re
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import ClassVar
 
 from qlogix.config import env
 from qlogix.filter.base import Filter, FilterType
@@ -10,7 +11,7 @@ from qlogix.utils import get_current_date
 class TodayFilter(Filter):
     stage = FilterType.SELECT
 
-    _datetime_patterns: list[tuple[str, str]] = [
+    _datetime_patterns: ClassVar[list[tuple[str, str]]] = [
         # ISO
         (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", "%Y-%m-%dT%H:%M:%S"),
         # 2026-05-22 12:01:33
@@ -35,10 +36,10 @@ class TodayFilter(Filter):
         value = env.QLOGIX_FILTER_DATE
 
         if not value:
-            return datetime.now().date()
+            return datetime.now(UTC).date()
 
         try:
-            return datetime.strptime(value, "%Y-%m-%d").date()
+            return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=UTC).date()
 
         except ValueError:
             raise ValueError(f"{env.key('QLOGIX_FILTER_DATE')} must be YYYY-MM-DD")
@@ -68,10 +69,10 @@ class TodayFilter(Filter):
                 if len(m.group()) == 13:
                     ts /= 1000
 
-                return datetime.fromtimestamp(ts)
+                return datetime.fromtimestamp(ts, tz=UTC)
 
-            except Exception:
-                pass
+            except (OSError, OverflowError, ValueError):
+                m = None
 
         # nginx/apache
         m = re.search(self._nginx_pattern, text)
@@ -83,8 +84,8 @@ class TodayFilter(Filter):
 
                 return datetime.strptime(value, "%d/%b/%Y %H:%M:%S %z")
 
-            except Exception:
-                pass
+            except ValueError:
+                m = None
 
         for pattern, fmt in self._datetime_patterns:
             m = re.search(pattern, text)
@@ -93,9 +94,9 @@ class TodayFilter(Filter):
                 continue
 
             try:
-                return datetime.strptime(m.group(), fmt)
+                return datetime.strptime(m.group(), fmt).replace(tzinfo=UTC)
 
-            except Exception:
+            except ValueError:
                 continue
 
         return None

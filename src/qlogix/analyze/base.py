@@ -12,10 +12,10 @@ class AnalyzeBaseContent(BaseModel):
     result: str
 
 
-T = TypeVar("T", bound=AnalyzeBaseContent, covariant=True)
+T_co = TypeVar("T_co", bound=AnalyzeBaseContent, covariant=True)
 
 
-class Analyze(Protocol[T]):
+class Analyze(Protocol[T_co]):
     name: ClassVar[str] = ""
 
     def __init_subclass__(cls, **kwargs):
@@ -24,4 +24,4 @@ class Analyze(Protocol[T]):
         if not cls.name:
             cls.name = camel_to_snake(cls.__name__)
 
-    def run(self, events: list[SourceBaseContent]) -> T: ...
+    def run(self, events: list[SourceBaseContent]) -> T_co: ...

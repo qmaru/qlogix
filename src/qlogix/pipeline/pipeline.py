@@ -39,7 +39,7 @@ class Pipeline:
                     source_events = source.fetch()
                 events.extend(source_events)
                 source_successes += 1
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 source_failures += 1
                 logger.warning("source failed, source=%s error=%r", source.name, exc)
 
