@@ -8,3 +8,4 @@ services:
       - ./config.toml:/app/config.toml:ro
     profiles:
       - cli
+    entrypoint: ["qlogix-cli"]
