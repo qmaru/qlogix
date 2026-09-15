@@ -19,6 +19,8 @@ class Env(BaseModel):
     # override
     QLOGIX_OPENAI_API_KEY: str | None = None
     QLOGIX_OPENAI_BASE_URL: str | None = None
+    QLOGIX_OPENAI_TIMEOUT: str | None = None
+    QLOGIX_OPENAI_MAX_RETRIES: str | None = None
     QLOGIX_TELEGRAM_TOKEN: str | None = None
     QLOGIX_TELEGRAM_CHAT_ID: str | None = None
     QLOGIX_FILTER_DATE: str | None = None  # YYYY-MM-DD, for today filter plugin
@@ -137,6 +139,8 @@ class Analyze(BaseModel):
     model: str
     api_key: str | None = None
     base_url: str | None = None
+    timeout: float = Field(default=120.0, gt=0)
+    max_retries: int = Field(default=2, ge=0)
     system_prompt: str = "Analyze logs and provide concise insights."
 
     @model_validator(mode="before")
@@ -151,6 +155,10 @@ class Analyze(BaseModel):
             data["base_url"] = (
                 data.get("base_url") or env.QLOGIX_OPENAI_BASE_URL or env.OPENAI_BASE_URL
             )
+            if data.get("timeout") is None and env.QLOGIX_OPENAI_TIMEOUT is not None:
+                data["timeout"] = env.QLOGIX_OPENAI_TIMEOUT
+            if data.get("max_retries") is None and env.QLOGIX_OPENAI_MAX_RETRIES is not None:
+                data["max_retries"] = env.QLOGIX_OPENAI_MAX_RETRIES
 
         return data
 

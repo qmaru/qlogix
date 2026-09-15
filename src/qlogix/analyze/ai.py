@@ -23,8 +23,8 @@ class AiAnalyze(Analyze[AiContent]):
         self.client = OpenAI(
             api_key=cfg.api_key or "",
             base_url=cfg.base_url,
-            timeout=120.0,
-            max_retries=2,
+            timeout=cfg.timeout,
+            max_retries=cfg.max_retries,
         )
         self.model_name = cfg.model
         self.api_type = cfg.api_type
