@@ -1,3 +1,5 @@
+from time import perf_counter
+
 from qlogix.config import get_filter_config, get_sink_config, get_source_config
 from qlogix.logutil import get_logger, log_stage
 from qlogix.pipeline.factory import (
@@ -82,7 +84,13 @@ class Pipeline:
             return
 
         if enable_ai_analyze:
+            analyzer_started_at = perf_counter()
+            logger.info("ai analyzer initialization started")
             analyzer = self._get_ai_analyze()
+            logger.info(
+                "ai analyzer initialization completed elapsed_seconds=%.1f",
+                perf_counter() - analyzer_started_at,
+            )
             with log_stage(logger, analyzer.name):
                 content = analyzer.run(events)
         else:

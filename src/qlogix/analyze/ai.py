@@ -1,10 +1,11 @@
 import json
+import threading
 from collections import Counter
-from functools import partial
+from time import perf_counter
 
 from qlogix.analyze.base import Analyze, AnalyzeBaseContent
 from qlogix.config import get_analyze_config
-from qlogix.logutil import get_logger, log_external_call
+from qlogix.logutil import get_logger
 from qlogix.source.base import SourceBaseContent
 
 logger = get_logger(__name__)
@@ -77,6 +78,7 @@ class AiAnalyze(Analyze[AiContent]):
             cfg.model, provider=provider, settings={"thinking": cfg.thinking_level}
         )
 
+        self.model_name = cfg.model
         self.agent = Agent(model, system_prompt=cfg.system_prompt)
 
     def run(self, events: list[SourceBaseContent]) -> AiContent:
@@ -93,12 +95,43 @@ class AiAnalyze(Analyze[AiContent]):
             f"Metadata:\n{json.dumps(metadata, ensure_ascii=False)}\n\n"
             f"Logs:\n{logs}"
         )
+        started_at = perf_counter()
+        heartbeat_stop = threading.Event()
+
+        def log_progress() -> None:
+            while not heartbeat_stop.wait(30):
+                logger.info(
+                    "ai analysis still running model=%s elapsed_seconds=%.1f",
+                    self.model_name,
+                    perf_counter() - started_at,
+                )
+
+        heartbeat = threading.Thread(target=log_progress, daemon=True)
+        heartbeat.start()
+        logger.info(
+            "ai analysis started model=%s events=%d sources=%d",
+            self.model_name,
+            len(events),
+            len(source_counts),
+        )
         try:
-            result = log_external_call(
-                logger, "ai.run_sync", partial(self.agent.run_sync, user_prompt=prompt)
+            result = self.agent.run_sync(user_prompt=prompt)
+            logger.info(
+                "ai analysis completed model=%s elapsed_seconds=%.1f",
+                self.model_name,
+                perf_counter() - started_at,
             )
 
             return AiContent(result=result.output)
 
         except Exception as e:  # noqa: BLE001
-            raise RuntimeError(f"AI request failed: {e}") from None
+            elapsed_seconds = perf_counter() - started_at
+            logger.error(
+                "ai analysis failed model=%s elapsed_seconds=%.1f error=%r",
+                self.model_name,
+                elapsed_seconds,
+                e,
+            )
+            return AiContent(result=f"AI analysis failed: {e}")
+        finally:
+            heartbeat_stop.set()
