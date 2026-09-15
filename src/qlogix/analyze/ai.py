@@ -17,69 +17,18 @@ class AiContent(AnalyzeBaseContent):
 
 class AiAnalyze(Analyze[AiContent]):
     def __init__(self):
-        import httpx2 as httpx
-        from httpx2 import HTTPStatusError
-        from pydantic_ai import Agent
-        from pydantic_ai.models.openai import OpenAIChatModel
-        from pydantic_ai.providers.openai import OpenAIProvider
-        from pydantic_ai.retries import (
-            AsyncHTTPX2TenacityTransport,
-            RetryConfig,
-            wait_retry_after,
-        )
-        from tenacity import retry_if_exception_type, stop_after_delay, wait_exponential
+        from openai import OpenAI
 
         cfg = get_analyze_config()
-
-        retry_config = RetryConfig(
-            retry=retry_if_exception_type(
-                (
-                    HTTPStatusError,
-                    httpx.TimeoutException,
-                    httpx.ConnectError,
-                    httpx.ReadError,
-                    httpx.RemoteProtocolError,
-                    httpx.NetworkError,
-                )
-            ),
-            wait=wait_retry_after(
-                fallback_strategy=wait_exponential(multiplier=2, min=5, max=300),
-                max_wait=1800,
-            ),
-            stop=stop_after_delay(3600),
-            reraise=True,
+        self.client = OpenAI(
+            api_key=cfg.api_key or "",
+            base_url=cfg.base_url,
+            timeout=120.0,
+            max_retries=2,
         )
-
-        limits = httpx.Limits(
-            max_connections=20,
-            max_keepalive_connections=10,
-            keepalive_expiry=30,
-        )
-
-        timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
-
-        http_client = httpx.AsyncClient(
-            timeout=timeout,
-            limits=limits,
-            transport=AsyncHTTPX2TenacityTransport(
-                config=retry_config,
-                validate_response=lambda r: r.raise_for_status(),
-            ),
-        )
-
-        if not cfg.api_key:
-            provider = OpenAIProvider(base_url=cfg.base_url, http_client=http_client)
-        else:
-            provider = OpenAIProvider(
-                base_url=cfg.base_url, api_key=cfg.api_key, http_client=http_client
-            )
-
-        model = OpenAIChatModel(
-            cfg.model, provider=provider, settings={"thinking": cfg.thinking_level}
-        )
-
         self.model_name = cfg.model
-        self.agent = Agent(model, system_prompt=cfg.system_prompt)
+        self.api_type = cfg.api_type
+        self.system_prompt = cfg.system_prompt
 
     def run(self, events: list[SourceBaseContent]) -> AiContent:
         source_counts = Counter(event.source_name or "unknown" for event in events)
@@ -115,14 +64,30 @@ class AiAnalyze(Analyze[AiContent]):
             len(source_counts),
         )
         try:
-            result = self.agent.run_sync(user_prompt=prompt)
+            if self.api_type == "responses":
+                response = self.client.responses.create(
+                    model=self.model_name,
+                    instructions=self.system_prompt,
+                    input=prompt,
+                )
+                content = response.output_text
+            else:
+                response = self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": prompt},
+                    ],
+                )
+                content = response.choices[0].message.content or ""
+
             logger.info(
                 "ai analysis completed model=%s elapsed_seconds=%.1f",
                 self.model_name,
                 perf_counter() - started_at,
             )
 
-            return AiContent(result=result.output)
+            return AiContent(result=content)
 
         except Exception as e:  # noqa: BLE001
             elapsed_seconds = perf_counter() - started_at

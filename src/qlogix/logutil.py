@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from uuid import uuid4
@@ -16,15 +16,17 @@ class TraceIdFilter(logging.Filter):
 def configure_logging() -> None:
     root = logging.getLogger()
 
-    if root.handlers:
-        return
+    if not root.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(levelname)s %(name)s trace_id=%(trace_id)s %(message)s",
+        )
 
-    logging.basicConfig(
-        level=logging.INFO, format=("%(levelname)s %(name)s trace_id=%(trace_id)s %(message)s")
-    )
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
 
     for handler in root.handlers:
-        handler.addFilter(TraceIdFilter())
+        if not any(isinstance(item, TraceIdFilter) for item in handler.filters):
+            handler.addFilter(TraceIdFilter())
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -38,7 +40,7 @@ def set_trace_id(trace_id: str | None = None) -> str:
 
 
 @contextmanager
-def log_stage(logger: logging.Logger, name: str) -> Iterator[None]:
+def log_stage(logger: logging.Logger, name: str) -> Generator[None]:
     try:
         yield
 

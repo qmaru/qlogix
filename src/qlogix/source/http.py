@@ -2,7 +2,7 @@ import json
 from functools import partial
 from typing import Any
 
-import httpx
+import httpx2
 
 from qlogix.logutil import get_logger, log_external_call
 from qlogix.source.base import Source, SourceBaseContent, SourceType
@@ -26,7 +26,7 @@ class HTTPSource(Source):
         ]
 
     def fetch(self) -> list[SourceBaseContent]:
-        with httpx.Client(timeout=30) as client:
+        with httpx2.Client(timeout=30) as client:
             response = log_external_call(
                 logger, "http.get", partial(client.get, self.url, timeout=30)
             )

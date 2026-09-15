@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from typing import ClassVar
 
 from qlogix.analyze.base import AnalyzeBaseContent
@@ -40,7 +41,10 @@ class Sink(ABC):
             return
 
         with ThreadPoolExecutor(max_workers=len(sinks)) as pool:
-            futures = [pool.submit(sink.write, content) for sink in sinks]
+            futures = [
+                pool.submit(copy_context().run, sink.write, content)
+                for sink in sinks
+            ]
             failures: list[tuple[str, Exception]] = []
 
             for sink, future in zip(sinks, futures, strict=False):

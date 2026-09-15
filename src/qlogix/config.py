@@ -77,6 +77,11 @@ class AnalyzeProvider(StrEnum):
     OPENAI = "openai"
 
 
+class AnalyzeApiType(StrEnum):
+    CHAT_COMPLETIONS = "chat-completions"
+    RESPONSES = "responses"
+
+
 class BaseSource(BaseModel):
     source_name: str | None = None
 
@@ -128,10 +133,10 @@ class Filter(BaseModel):
 
 class Analyze(BaseModel):
     provider: AnalyzeProvider
+    api_type: AnalyzeApiType = AnalyzeApiType.CHAT_COMPLETIONS
     model: str
     api_key: str | None = None
     base_url: str | None = None
-    thinking_level: Literal["minimal", "low", "medium", "high"] = "medium"
     system_prompt: str = "Analyze logs and provide concise insights."
 
     @model_validator(mode="before")

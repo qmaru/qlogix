@@ -1,9 +1,13 @@
 import getpass
 import shlex
+import socket
+from collections.abc import Generator
+from contextlib import contextmanager
 from functools import partial
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
+from ssh2.session import Session
 
 from qlogix.logutil import get_logger, log_external_call
 from qlogix.source.base import Source, SourceBaseContent, SourceType
@@ -35,41 +39,39 @@ class SSHSource(Source):
         self.command = command
         self.source_name = source_name
 
-    def __ssh_connect(self):
-        import paramiko
+    @contextmanager
+    def __ssh_connect(self) -> Generator[Session]:
+        sock = socket.create_connection(
+            (self.ssh_config.host, self.ssh_config.port), timeout=10
+        )
+        session = Session()
+        session.set_timeout(10_000)
+        session.handshake(sock)
 
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         if self.ssh_config.private_key:
-            client.connect(
-                self.ssh_config.host,
-                port=self.ssh_config.port,
-                username=self.ssh_config.username,
-                key_filename=self.ssh_config.private_key,
-                look_for_keys=False,
-                allow_agent=False,
+            session.userauth_publickey_fromfile(
+                self.ssh_config.username,
+                self.ssh_config.private_key,
             )
         else:
-            client.connect(
-                self.ssh_config.host,
-                port=self.ssh_config.port,
-                username=self.ssh_config.username,
-                password=self.ssh_config.password,
-                look_for_keys=False,
-                allow_agent=False,
-                timeout=10,
-                auth_timeout=10,
-                banner_timeout=10,
-            )
-        return client
+            session.userauth_password(self.ssh_config.username, self.ssh_config.password or "")
 
-    def __run_remote(self, client) -> list[str]:
+        try:
+            yield session
+        finally:
+            session.disconnect()
+            sock.close()
+
+    def __run_remote(self, session: Session) -> list[str]:
         cmd = self.command or f"cat {shlex.quote(self.log_path)}"
-        _stdin, stdout, stderr = client.exec_command(cmd)
+        channel = session.open_session()
+        channel.execute(cmd)
 
-        exit_code = stdout.channel.recv_exit_status()
-        out = stdout.read().decode("utf-8", errors="replace")
-        err = stderr.read().decode("utf-8", errors="replace").strip()
+        out = self.__read_channel(channel.read)
+        err = self.__read_channel(channel.read_stderr).strip()
+        channel.close()
+        channel.wait_closed()
+        exit_code = channel.get_exit_status()
 
         if exit_code != 0:
             raise RuntimeError(
@@ -77,6 +79,15 @@ class SSHSource(Source):
             )
 
         return out.splitlines()
+
+    @staticmethod
+    def __read_channel(read) -> str:
+        chunks = []
+        size, data = read()
+        while size > 0:
+            chunks.append(data)
+            size, data = read()
+        return b"".join(chunks).decode("utf-8", errors="replace")
 
     def fetch(self) -> list[SourceBaseContent]:
         with self.__ssh_connect() as client:

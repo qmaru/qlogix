@@ -1,6 +1,6 @@
 from functools import partial
 
-import httpx
+import httpx2
 
 from qlogix.analyze.base import AnalyzeBaseContent
 from qlogix.config import TelegramSinkConfig, get_sink_config
@@ -33,11 +33,11 @@ class TelegramSink(Sink):
 
         try:
             response = log_external_call(
-                logger, "telegram.send_message", partial(httpx.post, url, json=payload, timeout=30)
+                logger, "telegram.send_message", partial(httpx2.post, url, json=payload, timeout=30)
             )
             response.raise_for_status()
 
-        except httpx.HTTPError as e:
+        except httpx2.HTTPError as e:
             raise RuntimeError(f"Failed to send telegram message: {e}") from None
 
     def write(self, content: AnalyzeBaseContent):
