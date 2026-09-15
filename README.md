@@ -32,6 +32,15 @@ qlogix-cli analyze passthrough http https://httpbun.com/get
 qlogix-cli sink stdout http https://httpbun.com/get
 ```
 
+## hold
+
+Keep the process running without executing any qlogix work, for example when
+you need to enter the container shell:
+
+```bash
+qlogix-cli hold
+```
+
 ## docker
 
 ```bash
@@ -49,4 +58,11 @@ docker compose run --build --rm qlogix -h
 
 # remote
 docker compose run --rm qlogix -h
+```
+
+To keep a container alive for shell access:
+
+```bash
+docker compose run -d --name qlogix-hold qlogix hold
+docker exec -it qlogix-hold /bin/sh
 ```

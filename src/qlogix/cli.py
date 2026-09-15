@@ -1,4 +1,5 @@
 import argparse
+from time import sleep
 
 from qlogix import FULL_VERSION
 from qlogix.analyze import ANALYZE_REGISTRY
@@ -117,6 +118,8 @@ def get_parser():
         help="Run sources and filters, then stop before analyze and sink",
     )
 
+    sub.add_parser("hold", help="Keep the process running without doing any work")
+
     source_parser = sub.add_parser("source", help="Fetch events from a source")
     add_source_args(source_parser)
 
@@ -169,6 +172,10 @@ def run():
                 p = Pipeline()
                 with log_stage(logger, p.name):
                     p.run(enable_ai_analyze=not args.no_ai, preview=args.preview)
+
+            case "hold":
+                while True:
+                    sleep(3600)
 
             case "source":
                 events = load_events(args)
